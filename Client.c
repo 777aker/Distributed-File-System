@@ -5,6 +5,7 @@
 #include <strings.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -38,21 +39,21 @@ struct Servers handleconf(FILE *fp); // read's the dfc.conf file and parses info
 void connectservers(struct Servers servers); // connect to the 4 servers
 void clientlogic(struct Servers servers); // where the client's processing and actions happen
 long file_size(char *name); // get a file's size
-void get(struct Servers servers); // handle client doing get command
-void put(struct Servers servers); // handle client doing put command
+void get(struct Servers servers, char *filename); // handle client doing get command
+void put(struct Servers servers, char *filename); // handle client doing put command
 void list(struct Servers servers); // handle client doing list command
 int connectserver(char *ip, int port); // helper that connects to one server
 void exitcmd(struct Servers servers); // handle client doing exit command
-void mkdir(struct Servers servers); // handle mkdir command
+void mkdir(struct Servers servers, char *dirname); // handle mkdir command
 void login(struct Servers servers); // handles a user logging in
 void logout(struct Servers servers); // handles a user logging out
 
-void get(struct Servers servers) {
-
+void get(struct Servers servers, char *filename) {
+	//printf("%s\n", filename);
 }
 
-void put(struct Servers servers) {
-
+void put(struct Servers servers, char *filename) {
+	//printf("%s\n", filename);
 }
 
 void list(struct Servers servers) {
@@ -63,8 +64,8 @@ void exitcmd(struct Servers servers) {
 
 }
 
-void mkdir(struct Servers servers) {
-
+void mkdir(struct Servers servers, char *dirname) {
+	//printf("%s\n", dirname);
 }
 
 void login(struct Servers servers) {
@@ -72,11 +73,15 @@ void login(struct Servers servers) {
 }
 
 void logout(struct Servers servers) {
-	
+
 }
 
 void clientlogic(struct Servers servers) {
 	char buf[MAXBUF];
+	char spacedelim[] = " \r\n"; // for splitting on space
+	char *tokked; //  result of strtok
+	int optval = 1;
+	socklen_t optlen = sizeof(optval);
 	// do this forever
 	while(1) {
 		// clear the buff
@@ -88,18 +93,42 @@ void clientlogic(struct Servers servers) {
 			break;
 		}
 		if(strncmp(buf, "get", 3) == 0) {
-			get(servers);
+			tokked = strtok(buf, spacedelim);
+			tokked = strtok(NULL, spacedelim);
+			get(servers, tokked);
 		}
 		if(strncmp(buf, "put", 3) == 0) {
-			put(servers);
+			tokked = strtok(buf, spacedelim);
+			tokked = strtok(NULL, spacedelim);
+			put(servers, tokked);
 		}
 		if(strncmp(buf, "list", 4) == 0) {
 			list(servers);
 		}
-		write(servers.dfs1sock, buf, sizeof(buf));
-		write(servers.dfs2sock, buf, sizeof(buf));
-		write(servers.dfs3sock, buf, sizeof(buf));
-		write(servers.dfs4sock, buf, sizeof(buf));
+		if(strncmp(buf, "mkdir", 5) == 0) {
+			tokked = strtok(buf, spacedelim);
+			tokked = strtok(NULL, spacedelim);
+			mkdir(servers, tokked);
+		}
+		if(strncmp(buf, "login", 5) == 0) {
+			login(servers);
+		}
+		if(strncmp(buf, "logout", 6) == 0) {
+			logout(servers);
+		}
+		if(servers.dfs1sock != -1) {
+			write(servers.dfs1sock, buf, sizeof(buf));
+		}
+		if(servers.dfs2sock != -1) {
+			write(servers.dfs2sock, buf, sizeof(buf));
+		}
+		if(servers.dfs3sock != -1) {
+			write(servers.dfs3sock, buf, sizeof(buf));
+		}
+		if(servers.dfs4sock != -1) {
+			write(servers.dfs4sock, buf, sizeof(buf));
+		}
+		//printf("dfs1sock check: %d\n", servers.dfs1sock);
 	}
 }
 
@@ -125,15 +154,15 @@ void connectservers(struct Servers servers) {
 int connectserver(char *ip, int port) {
 	int sockfd, connfd;
 	struct sockaddr_in serveraddr;
+	int optval = 1;
+	socklen_t optlen = sizeof(optval);
 
-	printf("%s:%d\n", ip, port);
+	//printf("%s:%d\n", ip, port);
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if(sockfd == -1) {
 		printf("Socket creation failed exiting.\n");
 		exit(0);
-	} else {
-		printf("Socket created\n");
 	}
 	bzero(&serveraddr, sizeof(serveraddr));
 
@@ -147,6 +176,35 @@ int connectserver(char *ip, int port) {
 	} else {
 		printf("Connected to %s:%d\n", ip, port);
 	}
+	// set to keep alive and the various KEEPALIVE options
+	if(setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
+		printf("setsockopt error %s:%d\n", ip, port);
+		close(sockfd);
+		return -1;
+	}
+	// this didn't work bc these don't exist, oh well
+	// probably look into it in office hours
+	/*
+	optval = 2;
+	if(setsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, &optval, optlen) < 0) {
+		printf("setsockopt error %s:%d\n", ip, port);
+		close(sockfd);
+		return -1;
+	}
+	optval = 15;
+	if(setsockopt(sockfd, SOL_TCP, TCP_KEEPCNT, &optval, optlen) < 0) {
+		printf("setsockopt error %s:%d\n", ip, port);
+		close(sockfd);
+		return -1;
+	}
+	optval = 15;
+	if(setsockopt(sockfd, SOL_TCP, TCP_KEEPINTVL, &optval, optlen) < 0) {
+		printf("setsockopt error %s:%d\n", ip, port);
+		close(sockfd);
+		return -1;
+	}
+	*/
+
 	// return the socket
 	return sockfd;
 }

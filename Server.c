@@ -5,6 +5,7 @@
 #include <strings.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -25,22 +26,30 @@ void *thread(void *vargp); // handle the threading stuff
 void logic(int connfd) {
 	size_t n;
 	char buf[MAXBUF];
+	int optval = 1;
+	socklen_t optlen = sizeof(optval);
 
 	bzero(buf, MAXBUF);
 	n = read(connfd, buf, MAXBUF);
 	printf("server received:\n{%s}\n", buf);
 	while(strcmp(buf, "END CONNECTION\r\n") != 0) {
+		if(strcmp(buf, "") == 0) {
+			printf("Recieved empty buf assuming dead client closing connection\n");
+			return;
+		}
 		bzero(buf, MAXBUF);
 		n = read(connfd, buf, MAXBUF);
 		printf("server received while:\n{%s}\n", buf);
 	}
-	printf("Quitting\n");
+	if(strcmp(buf, "END CONNECTION\r\n") == 0)
+		printf("Recieved END CONNECTION closing connection\n");
 }
 
 // opening the listenfd
 int open_listenfd(int port) {
 	int listenfd, optval=1;
 	struct sockaddr_in serveraddr;
+	socklen_t optlen = sizeof(optval);
 
 	if((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 		return -1;
@@ -58,6 +67,35 @@ int open_listenfd(int port) {
 
 	if(listen(listenfd, LISTENQ) < 0)
 		return -1;
+	// set to keep alive
+	if(setsockopt(listenfd, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
+		printf("setsockopt error");
+		close(listenfd);
+		return -1;
+	}
+	// this didn't work bc these don't exist, oh well
+	// probably look into it in office hours
+	/*
+	optval = 2;
+	if(setsockopt(listenfd, SOL_TCP, TCP_KEEPCNT, &optval, optlen) < 0) {
+		printf("setsockopt error");
+		close(listendfd);
+		return -1;
+	}
+	optval = 15;
+	if(setsockopt(listenfd, SOL_TCP, TCP_KEEPCNT, &optval, optlen) < 0) {
+		printf("setsockopt error");
+		close(listendfd);
+		return -1;
+	}
+	optval = 15;
+	if(setsockopt(listenfd, SOL_TCP, TCP_KEEPCNT, &optval, optlen) < 0) {
+		printf("setsockopt error");
+		close(listendfd);
+		return -1;
+	}
+	*/
+
 	return listenfd;
 }
 
@@ -86,6 +124,10 @@ int main(int argc, char **argv) {
 	port = atoi(argv[2]);
 
 	listenfd = open_listenfd(port);
+	if(listenfd == -1) {
+		printf("Error creating listenfd\n");
+		exit(0);
+	}
 	while(1) {
 		connfdp = malloc(sizeof(int));
 		*connfdp = accept(listenfd, (struct sockaddr*)&clientaddr, &clientlen);
