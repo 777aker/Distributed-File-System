@@ -32,7 +32,7 @@ void logic(int connfd) {
 	while(strcmp(buf, "END CONNECTION\r\n") != 0) {
 		bzero(buf, MAXBUF);
 		n = read(connfd, buf, MAXBUF);
-		printf("server received:\n{%s}\n", buf);
+		printf("server received while:\n{%s}\n", buf);
 	}
 	printf("Quitting\n");
 }
