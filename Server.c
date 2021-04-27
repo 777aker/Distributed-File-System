@@ -107,7 +107,7 @@ struct User login(int con) {
 		while(attempts > 0) {
 			bzero(buf, MAXBUF);
 			read(con, buf, MAXBUF);
-			printf("{%s}, {%s}\n", buf, temp.password);
+			//printf("{%s}, {%s}\n", buf, temp.password);
 			if(strcmp(buf, temp.password) == 0) {
 				bzero(buf, strlen(buf));
 				strcpy(buf, "SUCCESS");
@@ -124,10 +124,10 @@ struct User login(int con) {
 		bzero(buf, strlen(buf));
 		strcpy(buf, "NUSR");
 		write(con, buf, strlen(buf));
-		bzero(buf, strlen(buf));
+		bzero(buf, MAXBUF);
 		//printf("expecting read\n");
 		read(con, buf, MAXBUF);
-		bzero(user.password, strlen(user.password));
+		bzero(user.password, 32);
 		strcpy(user.password, buf);
 		//printf("got read %s\n", buf);
 		bzero(buf, strlen(buf));
@@ -141,7 +141,7 @@ struct User login(int con) {
 			strcat(buf, ":");
 			strcat(buf, user.password);
 			strcat(buf, "\n");
-			printf("{%s}\n", buf);
+			//printf("{%s}\n", buf);
 			fp = fopen("dfs.conf", "a");
 			fputs(buf, fp);
 			//fprintf(fp, buf);
@@ -172,7 +172,7 @@ void logic(int connfd) {
 		}
 		bzero(buf, MAXBUF);
 		n = read(connfd, buf, MAXBUF);
-		printf("server received:\n{%s}\n", buf);
+		//printf("server received:\n{%s}\n", buf);
 		if(strncmp(buf, "get", 3) == 0) {
 			get(connfd, buf, user);
 		} else if(strncmp(buf, "put", 3) == 0) {

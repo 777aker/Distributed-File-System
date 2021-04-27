@@ -146,7 +146,7 @@ void login(struct Servers servers) {
 			fgets(buf, MAXBUF, stdin);
 			strtok(buf, "\n");
 			strcpy(password, buf);
-			printf("%s\n", buf);
+			//printf("%s\n", buf);
 			write(sock, buf, strlen(buf));
 			bzero(buf, MAXBUF);
 			read(sock, buf, MAXBUF);
@@ -192,7 +192,7 @@ void login(struct Servers servers) {
 		} else {
 			bzero(buf, strlen(buf));
 			strcpy(buf, "n");
-			printf("%s\n", buf);
+			//printf("%s\n", buf);
 			write(sock, buf, strlen(buf));
 			bzero(buf, strlen(buf));
 			read(sock, buf, MAXBUF);
@@ -237,7 +237,7 @@ void logout(struct Servers servers) {
 	if(servers.dfs4sock != -1) {
 		write(servers.dfs4sock, buf, strlen(buf));
 		bzero(ret, strlen(ret));
-		read(servers.dfs1sock, ret, MAXBUF);
+		read(servers.dfs4sock, ret, MAXBUF);
 		if(strcmp(ret, "1") == 0)
 			printf("DFS4 Success.\n");
 		else
