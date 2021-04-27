@@ -133,7 +133,8 @@ struct User login(int con) {
 		bzero(buf, strlen(buf));
 		strcpy(buf, "SUCCESS");
 		write(con, buf, strlen(buf));
-		if(strcmp(buf, "n") != 0) {
+		if(strcmp(user.password, "n") != 0) {
+			//printf("%s\n", buf);
 			//strcpy(user.password, buf);
 			bzero(buf, strlen(buf));
 			strcpy(buf, user.username);
