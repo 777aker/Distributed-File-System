@@ -14,20 +14,50 @@
 #define MAXBUF 8192 // max IO buffer between client and server
 #define LISTENQ 1024 // second argument to listen()
 
-struct user {
-	char username[32];
-	char password[32];
+struct User {
+	char *username;
+	char *password;
 };
 
 int open_listenfd(int port); // handle some connection stuff
 void logic(int connfd); // actual logic of the server or at least the start of it
 void *thread(void *vargp); // handle the threading stuff
+void get(int con, char *buf, struct User user); // handle get command
+void put(int con, char *buf, struct User user); // handle put command
+void list(int con, struct User user); // handle list command
+void mkdir(int con, char *buf, struct User user); // handle mkdir command
+struct User login(int con, char *buf); // handle login command
+
+char root[5];
+
+void get(int con, char *buf, struct User user) {
+
+}
+
+void put(int con, char *buf, struct User user) {
+
+}
+
+void list(int con, struct User user) {
+
+}
+
+void mkdir(int con, char *buf, struct User user) {
+
+}
+
+struct User login(int con, char *buf) {
+
+}
 
 void logic(int connfd) {
 	size_t n;
 	char buf[MAXBUF];
 	int optval = 1;
 	socklen_t optlen = sizeof(optval);
+	struct User user;
+	user.username = "";
+	user.password = "";
 
 	bzero(buf, MAXBUF);
 	n = read(connfd, buf, MAXBUF);
@@ -39,7 +69,24 @@ void logic(int connfd) {
 		}
 		bzero(buf, MAXBUF);
 		n = read(connfd, buf, MAXBUF);
-		printf("server received while:\n{%s}\n", buf);
+		//printf("server received while:\n{%s}\n", buf);
+		if(strncmp(buf, "get", 3) == 0) {
+			get(connfd, buf, user);
+		} else if(strncmp(buf, "put", 3) == 0) {
+			put(connfd, buf, user);
+		} else if(strncmp(buf, "list", 4) == 0) {
+			list(connfd, user);
+		} else if(strncmp(buf, "mkdir", 5) == 0) {
+			mkdir(connfd, buf, user);
+		} else if(strncmp(buf, "login", 5) == 0) {
+			user = login(connfd, buf);
+		} else if(strncmp(buf, "logout", 6) == 0) {
+			user.username = "";
+			user.password = "";
+			bzero(buf, MAXBUF);
+			strcpy(buf, "1");
+			write(connfd, buf, sizeof(buf));
+		}
 	}
 	if(strcmp(buf, "END CONNECTION\r\n") == 0)
 		printf("Recieved END CONNECTION closing connection\n");
@@ -122,6 +169,9 @@ int main(int argc, char **argv) {
 	}
 
 	port = atoi(argv[2]);
+	strcpy(root, argv[1]);
+	strcat(root, "/");
+	printf("root %s\n", root);
 
 	listenfd = open_listenfd(port);
 	if(listenfd == -1) {

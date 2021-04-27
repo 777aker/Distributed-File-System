@@ -17,19 +17,19 @@
 // structure used for passing servers' info between methods
 struct Servers {
 
-	char *dfs1ip;
+	char dfs1ip[15];
 	int dfs1port;
 	int dfs1sock;
 
-	char *dfs2ip;
+	char dfs2ip[15];
 	int dfs2port;
 	int dfs2sock;
 
-	char *dfs3ip;
+	char dfs3ip[15];
 	int dfs3port;
 	int dfs3sock;
 
-	char *dfs4ip;
+	char dfs4ip[15];
 	int dfs4port;
 	int dfs4sock;
 
@@ -47,33 +47,72 @@ void exitcmd(struct Servers servers); // handle client doing exit command
 void mkdir(struct Servers servers, char *dirname); // handle mkdir command
 void login(struct Servers servers); // handles a user logging in
 void logout(struct Servers servers); // handles a user logging out
+struct Servers reconnect(struct Servers servers); // try to reconnect to a server
 
 void get(struct Servers servers, char *filename) {
 	//printf("%s\n", filename);
+	// get file from servers
+	// ask each server for a specific fourth until we get one
+	// then repeat for each fourth
+	// if you none of them provide a fourth then say file incomplete
+
 }
 
 void put(struct Servers servers, char *filename) {
 	//printf("%s\n", filename);
+	// put files onto servers
+	// split file into fourths and send each fourth
+
 }
 
 void list(struct Servers servers) {
+	// get the files in servers and see if
+	// have all 4 parts
 
 }
 
 void exitcmd(struct Servers servers) {
+	// send servers exit signal
 
 }
 
 void mkdir(struct Servers servers, char *dirname) {
 	//printf("%s\n", dirname);
+	// make a subdirectory in current directory
+
 }
 
 void login(struct Servers servers) {
+	// login as a user for private drive
+	// username and password
 
 }
 
 void logout(struct Servers servers) {
+	// logout of the user so they can access shared drive again
+	
+}
 
+struct Servers reconnect(struct Servers servers) {
+	// check if still connected to each server
+	// for each server not connected to try to reconnect
+	if(servers.dfs1sock == -1) {
+		printf("Not connected to DFS1 attempting connect.\n");
+		servers.dfs1sock = connectserver(servers.dfs1ip, servers.dfs1port);
+	}
+	if(servers.dfs2sock == -1) {
+		printf("Not connected to DFS2 attempting connect.\n");
+		servers.dfs2sock = connectserver(servers.dfs2ip, servers.dfs2port);
+	}
+	if(servers.dfs3sock == -1) {
+		printf("Not connected to DFS3 attempting connect.\n");
+		servers.dfs3sock = connectserver(servers.dfs3ip, servers.dfs3port);
+	}
+	if(servers.dfs4sock == -1) {
+		printf("Not connected to DFS4 attempting connect.\n");
+		servers.dfs4sock = connectserver(servers.dfs4ip, servers.dfs4port);
+	}
+	return servers;
 }
 
 void clientlogic(struct Servers servers) {
@@ -82,40 +121,45 @@ void clientlogic(struct Servers servers) {
 	char *tokked; //  result of strtok
 	int optval = 1;
 	socklen_t optlen = sizeof(optval);
+
 	// do this forever
 	while(1) {
+		//printf("%s:%d\n", servers.dfs1ip, servers.dfs1port);
+
 		// clear the buff
 		bzero(buf, MAXBUF);
+		printf("--------------\n");
 		printf("Command: ");
 		fgets(buf, MAXBUF, stdin);
 		if(strncmp(buf, "exit", 4) == 0) {
 			exitcmd(servers);
 			break;
-		}
-		if(strncmp(buf, "get", 3) == 0) {
+		} else if(strncmp(buf, "get", 3) == 0) {
 			tokked = strtok(buf, spacedelim);
 			tokked = strtok(NULL, spacedelim);
 			get(servers, tokked);
-		}
-		if(strncmp(buf, "put", 3) == 0) {
+		} else if(strncmp(buf, "put", 3) == 0) {
 			tokked = strtok(buf, spacedelim);
 			tokked = strtok(NULL, spacedelim);
 			put(servers, tokked);
-		}
-		if(strncmp(buf, "list", 4) == 0) {
+		} else if(strncmp(buf, "list", 4) == 0) {
 			list(servers);
-		}
-		if(strncmp(buf, "mkdir", 5) == 0) {
+		} else if(strncmp(buf, "mkdir", 5) == 0) {
 			tokked = strtok(buf, spacedelim);
 			tokked = strtok(NULL, spacedelim);
 			mkdir(servers, tokked);
-		}
-		if(strncmp(buf, "login", 5) == 0) {
+		} else if(strncmp(buf, "login", 5) == 0) {
 			login(servers);
-		}
-		if(strncmp(buf, "logout", 6) == 0) {
+		} else if(strncmp(buf, "logout", 6) == 0) {
 			logout(servers);
+		} else if(strncmp(buf, "connect", 6) == 0) {
+			servers = reconnect(servers);
+		} else {
+			printf("Command not recognized. Available commands are:\n");
+			printf("exit, get, put, list, mkdir, login, logout, connect\n");
 		}
+		// this is for testing get rid of when done
+		/*
 		if(servers.dfs1sock != -1) {
 			write(servers.dfs1sock, buf, sizeof(buf));
 		}
@@ -128,6 +172,7 @@ void clientlogic(struct Servers servers) {
 		if(servers.dfs4sock != -1) {
 			write(servers.dfs4sock, buf, sizeof(buf));
 		}
+		*/
 		//printf("dfs1sock check: %d\n", servers.dfs1sock);
 	}
 }
@@ -278,13 +323,14 @@ struct Servers handleconf(FILE *fp) {
 	// parse the first line
 	if(strcmp(strtok(tokked, spacedelim), "Server") == 0) {
 		tokked = strtok(NULL, spacedelim);
-		servers.dfs1ip = strtok(NULL, colondelim);
+		strcpy(servers.dfs1ip, strtok(NULL, colondelim));
+		//servers.dfs1ip = strtok(NULL, colondelim);
 		servers.dfs1port = atoi(strtok(NULL, colondelim));
 	} else {
 		printf(".conf not formatted correctly. Please reference .conf provided.\n");
 		exit(0);
 	}
-	printf("read %s:%d\n", servers.dfs1ip, servers.dfs1port);
+	//printf("read %s:%d\n", servers.dfs1ip, servers.dfs1port);
 	// --------------
 	// copy to 
 	fgets(filedata, MAXBUF, fp);
@@ -300,14 +346,15 @@ struct Servers handleconf(FILE *fp) {
 	if(strcmp(strtok(tokked, spacedelim), "Server") == 0) {
 		//printf("yo\n");
 		tokked = strtok(NULL, spacedelim);
-		servers.dfs2ip = strtok(NULL, colondelim);
+		strcpy(servers.dfs2ip, strtok(NULL, colondelim));
+		//servers.dfs2ip = strtok(NULL, colondelim);
 		servers.dfs2port = atoi(strtok(NULL, colondelim));
 		//printf("yo\n");
 	} else {
 		printf(".conf not formatted correctly. Please reference .conf provided.\n");
 		exit(0);
 	}
-	printf("read %s:%d\n", servers.dfs2ip, servers.dfs2port);
+	//printf("read %s:%d\n", servers.dfs2ip, servers.dfs2port);
 	// --------------
 	// copy to
 	fgets(filedata, MAXBUF, fp);
@@ -320,13 +367,14 @@ struct Servers handleconf(FILE *fp) {
 	// parse the first line
 	if(strcmp(strtok(tokked, spacedelim), "Server") == 0) {
 		tokked = strtok(NULL, spacedelim);
-		servers.dfs3ip = strtok(NULL, colondelim);
+		strcpy(servers.dfs3ip, strtok(NULL, colondelim));
+		//servers.dfs3ip = strtok(NULL, colondelim);
 		servers.dfs3port = atoi(strtok(NULL, colondelim));
 	} else {
 		printf(".conf not formatted correctly. Please reference .conf provided.\n");
 		exit(0);
 	}
-	printf("read %s:%d\n", servers.dfs3ip, servers.dfs3port);
+	//printf("read %s:%d\n", servers.dfs3ip, servers.dfs3port);
 	// --------------
 	// copy to
 	fgets(filedata, MAXBUF, fp);
@@ -340,12 +388,13 @@ struct Servers handleconf(FILE *fp) {
 	// parse the first line
 	if(strcmp(strtok(tokked, spacedelim), "Server") == 0) {
 		tokked = strtok(NULL, spacedelim);
-		servers.dfs4ip = strtok(NULL, colondelim);
+		strcpy(servers.dfs4ip, strtok(NULL, colondelim));
+		//servers.dfs4ip = strtok(NULL, colondelim);
 		servers.dfs4port = atoi(strtok(NULL, colondelim));
 	} else {
 		printf(".conf not formatted correctly. Please reference .conf provided.\n");
 		exit(0);
 	}
-	printf("read %s:%d\n", servers.dfs4ip, servers.dfs4port);
+	//printf("read %s:%d\n", servers.dfs4ip, servers.dfs4port);
 	return servers;
 }
