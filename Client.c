@@ -347,6 +347,7 @@ void clientlogic(struct Servers servers) {
 		printf("--------------\n");
 		printf("Command: ");
 		fgets(buf, MAXBUF, stdin);
+		
 		if(strncmp(buf, "exit", 4) == 0) {
 			exitcmd(servers);
 			break;
