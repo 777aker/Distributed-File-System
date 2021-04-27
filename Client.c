@@ -44,7 +44,7 @@ void put(struct Servers servers, char *filename); // handle client doing put com
 void list(struct Servers servers); // handle client doing list command
 int connectserver(char *ip, int port); // helper that connects to one server
 void exitcmd(struct Servers servers); // handle client doing exit command
-void mkdir(struct Servers servers, char *dirname); // handle mkdir command
+void makedir(struct Servers servers, char *dirname); // handle mkdir command
 void login(struct Servers servers); // handles a user logging in
 void logout(struct Servers servers); // handles a user logging out
 struct Servers reconnect(struct Servers servers); // try to reconnect to a server
@@ -93,10 +93,43 @@ void exitcmd(struct Servers servers) {
 
 }
 
-void mkdir(struct Servers servers, char *dirname) {
+void makedir(struct Servers servers, char *dirname) {
 	//printf("%s\n", dirname);
 	// make a subdirectory in current directory
+	char buf[MAXBUF];
 
+	bzero(buf, MAXBUF);
+	strcpy(buf, "mkdir ");
+	strcat(buf, dirname);
+	writeservers(servers, buf);
+	bzero(buf, MAXBUF);
+	read(servers.dfs1sock, buf, MAXBUF);
+	if(strcmp(buf, "SUCCESS") == 0) {
+		printf("DFS1 made directory.\n");
+	} else {
+		printf("DFS1 failed to make directory.\n");
+	}
+	bzero(buf, MAXBUF);
+	read(servers.dfs2sock, buf, MAXBUF);
+	if(strcmp(buf, "SUCCESS") == 0) {
+		printf("DFS2 made directory.\n");
+	} else {
+		printf("DFS2 failed to make directory.\n");
+	}
+	bzero(buf, MAXBUF);
+	read(servers.dfs3sock, buf, MAXBUF);
+	if(strcmp(buf, "SUCCESS") == 0) {
+		printf("DFS3 made directory.\n");
+	} else {
+		printf("DFS3 failed to make directory.\n");
+	}
+	bzero(buf, MAXBUF);
+	read(servers.dfs4sock, buf, MAXBUF);
+	if(strcmp(buf, "SUCCESS") == 0) {
+		printf("DFS4 made directory.\n");
+	} else {
+		printf("DFS4 failed to make directory.\n");
+	}
 }
 
 void login(struct Servers servers) {
@@ -330,7 +363,12 @@ void clientlogic(struct Servers servers) {
 		} else if(strncmp(buf, "mkdir", 5) == 0) {
 			tokked = strtok(buf, spacedelim);
 			tokked = strtok(NULL, spacedelim);
-			mkdir(servers, tokked);
+			if(tokked == NULL)
+				printf("Invalid directory cancelling.\n");
+			else if(strcmp(tokked, "users") == 0)
+				printf("Protected directory can't make.\n");
+			else
+				makedir(servers, tokked);
 		} else if(strncmp(buf, "login", 5) == 0) {
 			login(servers);
 		} else if(strncmp(buf, "logout", 6) == 0) {

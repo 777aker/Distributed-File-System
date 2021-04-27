@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -25,7 +26,7 @@ void *thread(void *vargp); // handle the threading stuff
 void get(int con, char *buf, struct User user); // handle get command
 void put(int con, char *buf, struct User user); // handle put command
 void list(int con, struct User user); // handle list command
-void mkdir(int con, char *buf, struct User user); // handle mkdir command
+void makedir(int con, char *buf, struct User user); // handle mkdir command
 struct User login(int con); // handle login command
 struct User logspc(int con, char *buf);
 
@@ -43,14 +44,44 @@ void list(int con, struct User user) {
 
 }
 
-void mkdir(int con, char *buf, struct User user) {
+void makedir(int con, char *buf, struct User user) {
+	char delim[] = " \r\n";
+	char *tokked;
+	//char buf[MAXBUF];
+	int check;
+	char ret[MAXBUF];
 
+	bzero(ret, MAXBUF);
+	strcpy(ret, root);
+	if(strlen(user.username) != 0) {
+		strcat(ret, "users/");
+		strcat(ret, user.username);
+		strcat(ret, "/");
+	}
+	tokked = strtok(buf, delim);
+	tokked = strtok(NULL, delim);
+	strcat(ret, tokked);
+
+	check = mkdir(ret, 0777);
+
+	if(!check) {
+		printf("Directory %s created\n", ret);
+		bzero(buf, MAXBUF);
+		strcpy(buf, "SUCCESS");
+		write(con, buf, strlen(buf));
+	} else {
+		printf("Unable to make %s directory\n", ret);
+		bzero(buf, MAXBUF);
+		strcpy(buf, "FAILED");
+		write(con, buf, strlen(buf));
+	}
 }
 
 struct User logspc(int con, char *buf) {
 	struct User user;
 	char delim[] = " :\r\n";
 	char *tokked;
+	char dir[MAXBUF];
 
 	tokked = strtok(buf, delim);
 	tokked = strtok(NULL, delim);
@@ -58,6 +89,13 @@ struct User logspc(int con, char *buf) {
 	tokked = strtok(NULL, delim);
 	strcpy(user.password, tokked);
 	printf("User %s logged in.\n", user.username);
+	bzero(dir, MAXBUF);
+	strcpy(dir, root);
+	strcat(dir, "users/");
+	strcat(dir, user.username);
+	//printf("%s\n", dir);
+	//printf("%d\n", mkdir(dir, 0777));
+	mkdir(dir, 0777);
 	return user;
 }
 
@@ -180,12 +218,12 @@ void logic(int connfd) {
 		} else if(strncmp(buf, "list", 4) == 0) {
 			list(connfd, user);
 		} else if(strncmp(buf, "mkdir", 5) == 0) {
-			mkdir(connfd, buf, user);
+			makedir(connfd, buf, user);
 		} else if(strncmp(buf, "login", 5) == 0) {
 			user = login(connfd);
 		} else if(strncmp(buf, "logout", 6) == 0) {
-			bzero(user.username, strlen(user.username));
-			bzero(user.password, strlen(user.password));
+			bzero(user.username, 32);
+			bzero(user.password, 32);
 			bzero(buf, MAXBUF);
 			strcpy(buf, "1");
 			write(connfd, buf, sizeof(buf));
@@ -267,6 +305,7 @@ int main(int argc, char **argv) {
 	int listenfd, *connfdp, port, clientlen=sizeof(struct sockaddr_in);
 	struct sockaddr_in clientaddr;
 	pthread_t tid;
+	char users[16];
 
 	if(argc < 3) {
 		printf("Wrong number of arguments expected at least dfs DFS# port#");
@@ -275,6 +314,11 @@ int main(int argc, char **argv) {
 
 	port = atoi(argv[2]);
 	strcpy(root, argv[1]);
+	bzero(users, 16);
+	strcpy(users, root);
+	mkdir(users, 0777);
+	strcat(users, "/users");
+	mkdir(users, 0777);
 	strcat(root, "/");
 	printf("root %s\n", root);
 
