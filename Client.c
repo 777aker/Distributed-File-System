@@ -48,6 +48,8 @@ void mkdir(struct Servers servers, char *dirname); // handle mkdir command
 void login(struct Servers servers); // handles a user logging in
 void logout(struct Servers servers); // handles a user logging out
 struct Servers reconnect(struct Servers servers); // try to reconnect to a server
+void writeservers(struct Servers servers, char *message); // write message to all servers
+void readservers(struct Servers servers); // reads message from each server
 
 void get(struct Servers servers, char *filename) {
 	//printf("%s\n", filename);
@@ -73,6 +75,21 @@ void list(struct Servers servers) {
 
 void exitcmd(struct Servers servers) {
 	// send servers exit signal
+	char buf[] = "END CONNECTION\r\n";
+
+	printf("Closing connection to servers.\n");
+	if(servers.dfs1sock != -1) {
+		write(servers.dfs1sock, buf, strlen(buf));
+	}
+	if(servers.dfs2sock != -1) {
+		write(servers.dfs2sock, buf, strlen(buf));
+	}
+	if(servers.dfs3sock != -1) {
+		write(servers.dfs3sock, buf, strlen(buf));
+	}
+	if(servers.dfs4sock != -1) {
+		write(servers.dfs4sock, buf, strlen(buf));
+	}
 
 }
 
@@ -85,32 +102,188 @@ void mkdir(struct Servers servers, char *dirname) {
 void login(struct Servers servers) {
 	// login as a user for private drive
 	// username and password
+	char buf[MAXBUF];
+	int sock = -1;
+	char username[32];
+	char password[32];
+
+	strcpy(buf, "login");
+	if(servers.dfs1sock != -1)
+		sock = servers.dfs1sock;
+	else if(servers.dfs2sock != -1)
+		sock = servers.dfs2sock;
+	else if(servers.dfs3sock != -1)
+		sock = servers.dfs3sock;
+	else if(servers.dfs4sock != -1)
+		sock = servers.dfs4sock;
+	if(sock == -1) {
+		printf("No servers available cancelling login.\n");
+		return;
+	}
+	write(sock, buf, strlen(buf));
+
+	printf("Username: ");
+	fgets(buf, MAXBUF, stdin);
+	// strtok is destructive heheheeeee
+	strtok(buf, "\n");
+	while(strlen(buf) > 32 || strlen(buf) < 3 || strchr(buf, ':') != NULL) {
+		printf("Username too long or too short or contains :.\n Must be 3-32 characters no :. Try agagin\n");
+		printf("Username: ");
+		bzero(buf, strlen(buf));
+		fgets(buf, MAXBUF, stdin);
+		strtok(buf, "\n");
+	}
+	
+	strcpy(username, buf);
+	write(sock, buf, strlen(buf));
+	bzero(buf, strlen(buf));
+	read(sock, buf, MAXBUF);
+	if(strcmp(buf, "FUSR") == 0) {
+		int attempts = 3;
+		while(attempts > 0) {
+			printf("Enter password: ");
+			bzero(buf, strlen(buf));
+			fgets(buf, MAXBUF, stdin);
+			strtok(buf, "\n");
+			strcpy(password, buf);
+			printf("%s\n", buf);
+			write(sock, buf, strlen(buf));
+			bzero(buf, MAXBUF);
+			read(sock, buf, MAXBUF);
+			if(strcmp(buf, "SUCCESS") == 0) {
+				bzero(buf, strlen(buf));
+				strcpy(buf, "logspc ");
+				strcat(buf, username);
+				strcat(buf, ":");
+				strcat(buf, password);
+				writeservers(servers, buf);
+				printf("Logged in.\n");
+				break;
+			}
+			attempts--;
+			printf("Wrong password try again. %d attempts remaining\n", attempts);
+		}
+	} else {
+		printf("User doesn't exist. Create user? (y/n): ");
+		bzero(buf, strlen(buf));
+		fgets(buf, MAXBUF, stdin);
+		strtok(buf, "\n");
+		if(strcmp(buf, "y") == 0) {
+			printf("Enter password: ");
+			bzero(buf, strlen(buf));
+			fgets(buf, MAXBUF, stdin);
+			strtok(buf, "\n");
+			while(strlen(buf) > 32 || strlen(buf) < 3 || strchr(buf, ':') != NULL) {
+				printf("Password must be 3-32 characters long and not contain :.\n Try again: ");
+				bzero(buf, strlen(buf));
+				fgets(buf, MAXBUF, stdin);
+				strtok(buf, "\n");
+			}
+			write(sock, buf, strlen(buf));
+			strcpy(password, buf);
+			bzero(buf, strlen(buf));
+			read(sock, buf, MAXBUF);
+			bzero(buf, strlen(buf));
+			strcpy(buf, "logspc ");
+			strcat(buf, username);
+			strcat(buf, ":");
+			strcat(buf, password);
+			writeservers(servers, buf);
+		} else {
+			bzero(buf, strlen(buf));
+			strcpy(buf, "n");
+			printf("%s\n", buf);
+			write(sock, buf, strlen(buf));
+			bzero(buf, strlen(buf));
+			read(sock, buf, MAXBUF);
+		}
+	}
 
 }
 
 void logout(struct Servers servers) {
 	// logout of the user so they can access shared drive again
-	
+	char buf[] = "logout";
+	char ret[MAXBUF];
+
+	printf("Logging out of servers.\n");
+	if(servers.dfs1sock != -1) {
+		write(servers.dfs1sock, buf, strlen(buf));
+		bzero(ret, strlen(ret));
+		read(servers.dfs1sock, ret, MAXBUF);
+		if(strcmp(ret, "1") == 0)
+			printf("DFS1 Success.\n");
+		else
+			printf("DFS1 Failed.\n");
+	}
+	if(servers.dfs2sock != -1) {
+		write(servers.dfs2sock, buf, strlen(buf));
+		bzero(ret, strlen(ret));
+		read(servers.dfs2sock, ret, MAXBUF);
+		if(strcmp(ret, "1") == 0)
+			printf("DFS2 Success.\n");
+		else
+			printf("DFS2 Failed.\n");
+	}
+	if(servers.dfs3sock != -1) {
+		write(servers.dfs3sock, buf, strlen(buf));
+		bzero(ret, strlen(ret));
+		read(servers.dfs3sock, ret, MAXBUF);
+		if(strcmp(ret, "1") == 0)
+			printf("DFS3 Success.\n");
+		else
+			printf("DFS3 Failed.\n");
+	}
+	if(servers.dfs4sock != -1) {
+		write(servers.dfs4sock, buf, strlen(buf));
+		bzero(ret, strlen(ret));
+		read(servers.dfs1sock, ret, MAXBUF);
+		if(strcmp(ret, "1") == 0)
+			printf("DFS4 Success.\n");
+		else
+			printf("DFS4 Failed.\n");
+	}
+}
+
+
+// I made this message a little later than I should have
+// so some things that should use this don't
+// just sends a message to each server
+void writeservers(struct Servers servers, char *message) {
+	if(servers.dfs1sock != -1)
+		write(servers.dfs1sock, message, strlen(message));
+	if(servers.dfs2sock != -1)
+		write(servers.dfs2sock, message, strlen(message));
+	if(servers.dfs3sock != -1)
+		write(servers.dfs3sock, message, strlen(message));
+	if(servers.dfs4sock != -1)
+		write(servers.dfs4sock, message, strlen(message));
 }
 
 struct Servers reconnect(struct Servers servers) {
 	// check if still connected to each server
 	// for each server not connected to try to reconnect
+	char buf[] = "Connected";
+
 	if(servers.dfs1sock == -1) {
 		printf("Not connected to DFS1 attempting connect.\n");
 		servers.dfs1sock = connectserver(servers.dfs1ip, servers.dfs1port);
+		write(servers.dfs1sock, buf, strlen(buf));
 	}
 	if(servers.dfs2sock == -1) {
 		printf("Not connected to DFS2 attempting connect.\n");
 		servers.dfs2sock = connectserver(servers.dfs2ip, servers.dfs2port);
+		write(servers.dfs2sock, buf, strlen(buf));
 	}
 	if(servers.dfs3sock == -1) {
 		printf("Not connected to DFS3 attempting connect.\n");
 		servers.dfs3sock = connectserver(servers.dfs3ip, servers.dfs3port);
+		write(servers.dfs3sock, buf, strlen(buf));
 	}
 	if(servers.dfs4sock == -1) {
 		printf("Not connected to DFS4 attempting connect.\n");
 		servers.dfs4sock = connectserver(servers.dfs4ip, servers.dfs4port);
+		write(servers.dfs4sock, buf, strlen(buf));
 	}
 	return servers;
 }
@@ -122,6 +295,16 @@ void clientlogic(struct Servers servers) {
 	int optval = 1;
 	socklen_t optlen = sizeof(optval);
 
+	// preliminary connected message
+	strcpy(buf, "Connected");
+	if(servers.dfs1sock != -1)
+		write(servers.dfs1sock, buf, strlen(buf));
+	if(servers.dfs2sock != -1)
+		write(servers.dfs2sock, buf, strlen(buf));
+	if(servers.dfs3sock != -1)
+		write(servers.dfs3sock, buf, strlen(buf));
+	if(servers.dfs4sock != -1)
+		write(servers.dfs4sock, buf, strlen(buf));
 	// do this forever
 	while(1) {
 		//printf("%s:%d\n", servers.dfs1ip, servers.dfs1port);
