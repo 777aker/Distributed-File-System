@@ -23,8 +23,8 @@ struct User {
 int open_listenfd(int port); // handle some connection stuff
 void logic(int connfd); // actual logic of the server or at least the start of it
 void *thread(void *vargp); // handle the threading stuff
-void get(int con, char *buf, struct User user); // handle get command
-void put(int con, char *buf, struct User user); // handle put command
+void get(int con, struct User user); // handle get command
+void put(int con, struct User user); // handle put command
 void list(int con, struct User user); // handle list command
 void makedir(int con, char *buf, struct User user); // handle mkdir command
 struct User login(int con); // handle login command
@@ -32,12 +32,80 @@ struct User logspc(int con, char *buf);
 
 char root[5];
 
-void get(int con, char *buf, struct User user) {
+void get(int con, struct User user) {
 
 }
 
-void put(int con, char *buf, struct User user) {
+void put(int con, struct User user) {
+	char buf[MAXBUF];
+	FILE *fp;
+	char filename[MAXBUF];
 
+	bzero(buf, MAXBUF);
+	strcpy(buf, "Ready");
+	write(con, buf, strlen(buf));
+	//printf("We in the put.\n");
+	bzero(buf, MAXBUF);
+	bzero(filename, MAXBUF);
+	read(con, buf, MAXBUF);
+	//printf("Got %s\n", buf);
+	strcpy(filename, root);
+	if(strlen(user.username) > 0) {
+		strcat(filename, "users/");
+		strcat(filename, user.username);
+		strcat(filename, "/");
+	}
+	strcat(filename, buf);
+	fp = fopen(filename, "w");
+	if(fp == NULL) {
+		printf("file %s failed to create\n", filename);
+		bzero(buf, MAXBUF);
+		strcpy(buf, filename);
+		write(con, buf, strlen(buf));
+		return;
+	}
+	bzero(buf, MAXBUF);
+	strcpy(buf, "SUCCESS");
+	write(con, buf, strlen(buf));
+
+	bzero(buf, MAXBUF);
+	while(strcmp(buf, "EOF\r\n") != 0) {
+		bzero(buf, MAXBUF);
+		read(con, buf, MAXBUF);
+		fputs(buf, fp);
+	}
+	bzero(buf, MAXBUF);
+	strcpy(buf, "SUCCESS");
+	write(con, buf, strlen(buf));
+
+	bzero(buf, MAXBUF);
+	bzero(filename, MAXBUF);
+	read(con, buf, MAXBUF);
+	strcpy(filename, root);
+	if(strlen(user.username) > 0) {
+		strcat(filename, "users/");
+		strcat(filename, user.username);
+		strcat(filename, "/");
+	}
+	strcat(filename, buf);
+	fp = fopen(filename, "w");
+	if(fp == NULL) {
+		bzero(buf, MAXBUF);
+		strcpy(buf, filename);
+		write(con, buf, strlen(buf));
+		return;
+	}
+
+	bzero(buf, MAXBUF);
+	while(strcmp(buf, "EOF\r\n") != 0) {
+		bzero(buf, MAXBUF);
+		read(con, buf, MAXBUF);
+		fputs(buf, fp);
+	}
+	bzero(buf, MAXBUF);
+	strcpy(buf, "SUCCESS");
+	write(con, buf, strlen(buf));
+	fclose(fp);
 }
 
 void list(int con, struct User user) {
@@ -212,9 +280,10 @@ void logic(int connfd) {
 		n = read(connfd, buf, MAXBUF);
 		//printf("server received:\n{%s}\n", buf);
 		if(strncmp(buf, "get", 3) == 0) {
-			get(connfd, buf, user);
+			get(connfd, user);
 		} else if(strncmp(buf, "put", 3) == 0) {
-			put(connfd, buf, user);
+			//printf("Uhg %s\n", buf);
+			put(connfd, user);
 		} else if(strncmp(buf, "list", 4) == 0) {
 			list(connfd, user);
 		} else if(strncmp(buf, "mkdir", 5) == 0) {

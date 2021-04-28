@@ -52,6 +52,7 @@ struct Servers reconnect(struct Servers servers); // try to reconnect to a serve
 void writeservers(struct Servers servers, char *message); // write message to all servers
 void readservers(struct Servers servers); // reads message from each server
 int md5sumhash(char *filename); // compute the md5hash of a file
+void puthelper(int serv1, int serv2, FILE *fp, int size);
 
 void get(struct Servers servers, char *filename) {
 	//printf("%s\n", filename);
@@ -62,6 +63,56 @@ void get(struct Servers servers, char *filename) {
 
 }
 
+void puthelper(int serv1, int serv2, FILE *fp, int size) {
+	int fourth = 0;
+	char buf[MAXBUF];
+	char c = 0;
+	int bufi = 0;
+
+	bzero(buf, MAXBUF);
+	read(serv1, buf, strlen(buf));
+	if(strcmp(buf, "SUCCESS") != 0) {
+		printf("Failed to create file on server side. %s\n", buf);
+		return;
+	}
+	bzero(buf, MAXBUF);
+	read(serv2, buf, strlen(buf));
+	if(strcmp(buf, "SUCCESS") != 0) {
+		printf("Failed to create file on server side. %s\n", buf);
+		return;
+	}
+
+	while(fourth <= size) {
+		if(bufi >= MAXBUF - 1) {
+			write(serv1, buf, strlen(buf));
+			write(serv2, buf, strlen(buf));
+			bufi = 0;
+			bzero(buf, MAXBUF);
+		}
+		c = (char) fgetc(fp);
+		buf[bufi] = c;
+		bufi++;
+		fourth++;
+	}
+	write(serv1, buf, strlen(buf));
+	write(serv2, buf, strlen(buf));
+
+	bzero(buf, MAXBUF);
+	strcpy(buf, "EOF\r\n");
+	write(serv1, buf, strlen(buf));
+	write(serv2, buf, strlen(buf));
+
+	bzero(buf, MAXBUF);
+	read(serv1, buf, strlen(buf));
+	if(strcmp(buf, "SUCCESS") != 0)
+		printf("Failed to write to server. %s\n", buf);
+	bzero(buf, MAXBUF);
+	read(serv2, buf, strlen(buf));
+	if(strcmp(buf, "SUCCESS") != 0)
+		printf("Failed to write to server. %s\n", buf);
+
+}
+
 void put(struct Servers servers, char *filename) {
 	//printf("%s\n", filename);
 	// put files onto servers
@@ -69,6 +120,7 @@ void put(struct Servers servers, char *filename) {
 	FILE *fp;
 	int size;
 	int hashval;
+	char buf[MAXBUF];
 
 	fp = fopen(filename, "rb");
 	if(fp == NULL) {
@@ -77,11 +129,163 @@ void put(struct Servers servers, char *filename) {
 	}
 
 	size = file_size(filename);
-	printf("%d\n", size);
+	size = size / 4;
+	//printf("%d\n", size);
 
 	hashval = md5sumhash(filename);
-	printf("%d hash\n", hashval);
+	hashval = hashval % 4;
+	//printf("%d hash\n", hashval);
 
+	bzero(buf, MAXBUF);
+	strcpy(buf, "put");
+	writeservers(servers, buf);
+	if(servers.dfs1sock != -1) {
+		bzero(buf, MAXBUF);
+		read(servers.dfs1sock, buf, strlen(buf));
+		if(strcmp(buf, "Ready") != 0)
+			printf("Failed to send put to DFS1\n");
+	}
+	if(servers.dfs2sock != -1) {
+		bzero(buf, MAXBUF);
+		read(servers.dfs2sock, buf, strlen(buf));
+		if(strcmp(buf, "Ready") != 0)
+			printf("Failed to send put to DFS2\n");
+	}
+	if(servers.dfs3sock != -1) {
+		bzero(buf, MAXBUF);
+		read(servers.dfs3sock, buf, strlen(buf));
+		if(strcmp(buf, "Ready") != 0)
+			printf("Failed to send put to DFS3\n");
+	}
+	if(servers.dfs4sock != -1) {
+		bzero(buf, MAXBUF);
+		read(servers.dfs4sock, buf, strlen(buf));
+		if(strcmp(buf, "Ready") != 0)
+			printf("Failed to send put to DFS4\n");
+	}
+	/*
+	switch(hashval) {
+		case 0:
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".1");
+			write(servers.dfs1sock, buf, strlen(buf));
+			write(servers.dfs4sock, buf, strlen(buf));
+			puthelper(servers.dfs1sock, servers.dfs4sock, fp, size);
+
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".2");
+			write(servers.dfs1sock, buf, strlen(buf));
+			write(servers.dfs2sock, buf, strlen(buf));
+			puthelper(servers.dfs1sock, servers.dfs2sock, fp, size);
+
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".3");
+			write(servers.dfs2sock, buf, strlen(buf));
+			write(servers.dfs3sock, buf, strlen(buf));
+			puthelper(servers.dfs2sock, servers.dfs3sock, fp, size);
+
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".4");
+			write(servers.dfs4sock, buf, strlen(buf));
+			write(servers.dfs1sock, buf, strlen(buf));
+			puthelper(servers.dfs4sock, servers.dfs1sock, fp, size);
+			break;
+		case 1:
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".1");
+			write(servers.dfs1sock, buf, strlen(buf));
+			write(servers.dfs4sock, buf, strlen(buf));
+			puthelper(servers.dfs1sock, servers.dfs4sock, fp, size);
+
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".2");
+			write(servers.dfs1sock, buf, strlen(buf));
+			write(servers.dfs2sock, buf, strlen(buf));
+			puthelper(servers.dfs1sock, servers.dfs2sock, fp, size);
+
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".3");
+			write(servers.dfs2sock, buf, strlen(buf));
+			write(servers.dfs3sock, buf, strlen(buf));
+			puthelper(servers.dfs2sock, servers.dfs3sock, fp, size);
+
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".4");
+			write(servers.dfs4sock, buf, strlen(buf));
+			write(servers.dfs1sock, buf, strlen(buf));
+			puthelper(servers.dfs4sock, servers.dfs1sock, fp, size);
+			break;
+		case 2:
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".1");
+			write(servers.dfs1sock, buf, strlen(buf));
+			write(servers.dfs4sock, buf, strlen(buf));
+			puthelper(servers.dfs1sock, servers.dfs4sock, fp, size);
+
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".2");
+			write(servers.dfs1sock, buf, strlen(buf));
+			write(servers.dfs2sock, buf, strlen(buf));
+			puthelper(servers.dfs1sock, servers.dfs2sock, fp, size);
+
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".3");
+			write(servers.dfs2sock, buf, strlen(buf));
+			write(servers.dfs3sock, buf, strlen(buf));
+			puthelper(servers.dfs2sock, servers.dfs3sock, fp, size);
+
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".4");
+			write(servers.dfs4sock, buf, strlen(buf));
+			write(servers.dfs1sock, buf, strlen(buf));
+			puthelper(servers.dfs4sock, servers.dfs1sock, fp, size);
+			break;
+		case 3:
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".1");
+			write(servers.dfs1sock, buf, strlen(buf));
+			write(servers.dfs4sock, buf, strlen(buf));
+			puthelper(servers.dfs1sock, servers.dfs4sock, fp, size);
+
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".2");
+			write(servers.dfs1sock, buf, strlen(buf));
+			write(servers.dfs2sock, buf, strlen(buf));
+			puthelper(servers.dfs1sock, servers.dfs2sock, fp, size);
+
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".3");
+			write(servers.dfs2sock, buf, strlen(buf));
+			write(servers.dfs3sock, buf, strlen(buf));
+			puthelper(servers.dfs2sock, servers.dfs3sock, fp, size);
+
+			bzero(buf, MAXBUF);
+			strcpy(buf, filename);
+			strcat(buf, ".4");
+			write(servers.dfs4sock, buf, strlen(buf));
+			write(servers.dfs1sock, buf, strlen(buf));
+			puthelper(servers.dfs4sock, servers.dfs1sock, fp, size);
+			break;
+		default:
+			printf("Couldn't get hashvalue cancelling.\n");
+	}
+	*/
+	fclose(fp);
 }
 
 void list(struct Servers servers) {
@@ -334,6 +538,27 @@ void writeservers(struct Servers servers, char *message) {
 		write(servers.dfs4sock, message, strlen(message));
 }
 
+void readservers(struct Servers servers) {
+	char buf[MAXBUF];
+
+	if(servers.dfs1sock != -1) {
+		bzero(buf, MAXBUF);
+		read(servers.dfs1sock, buf, strlen(buf));
+	}
+	if(servers.dfs2sock != -1) {
+		bzero(buf, MAXBUF);
+		read(servers.dfs2sock, buf, strlen(buf));
+	}
+	if(servers.dfs3sock != -1) {
+		bzero(buf, MAXBUF);
+		read(servers.dfs3sock, buf, strlen(buf));
+	}
+	if(servers.dfs4sock != -1) {
+		bzero(buf, MAXBUF);
+		read(servers.dfs4sock, buf, strlen(buf));
+	}
+}
+
 struct Servers reconnect(struct Servers servers) {
 	// check if still connected to each server
 	// for each server not connected to try to reconnect
@@ -395,11 +620,17 @@ void clientlogic(struct Servers servers) {
 		} else if(strncmp(buf, "get", 3) == 0) {
 			tokked = strtok(buf, spacedelim);
 			tokked = strtok(NULL, spacedelim);
-			get(servers, tokked);
+			if(strncmp(tokked, "users/", 6) == 0)
+				printf("Users is protected directory.\n");
+			else
+				get(servers, tokked);
 		} else if(strncmp(buf, "put", 3) == 0) {
 			tokked = strtok(buf, spacedelim);
 			tokked = strtok(NULL, spacedelim);
-			put(servers, tokked);
+			if(strncmp(tokked, "users/", 6) == 0)
+				printf("Users is protected directory.\n");
+			else
+				put(servers, tokked);
 		} else if(strncmp(buf, "list", 4) == 0) {
 			list(servers);
 		} else if(strncmp(buf, "mkdir", 5) == 0) {
