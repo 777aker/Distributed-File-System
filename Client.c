@@ -69,6 +69,7 @@ void puthelper(int serv1, int serv2, FILE *fp, int size) {
 	char c = 0;
 	int bufi = 0;
 
+	/*
 	bzero(buf, MAXBUF);
 	read(serv1, buf, strlen(buf));
 	if(strcmp(buf, "SUCCESS") != 0) {
@@ -110,6 +111,7 @@ void puthelper(int serv1, int serv2, FILE *fp, int size) {
 	read(serv2, buf, strlen(buf));
 	if(strcmp(buf, "SUCCESS") != 0)
 		printf("Failed to write to server. %s\n", buf);
+	*/
 
 }
 
@@ -139,6 +141,7 @@ void put(struct Servers servers, char *filename) {
 	bzero(buf, MAXBUF);
 	strcpy(buf, "put");
 	writeservers(servers, buf);
+	/*
 	if(servers.dfs1sock != -1) {
 		bzero(buf, MAXBUF);
 		read(servers.dfs1sock, buf, strlen(buf));
@@ -163,6 +166,7 @@ void put(struct Servers servers, char *filename) {
 		if(strcmp(buf, "Ready") != 0)
 			printf("Failed to send put to DFS4\n");
 	}
+	*/
 	/*
 	switch(hashval) {
 		case 0:
@@ -625,12 +629,16 @@ void clientlogic(struct Servers servers) {
 			else
 				get(servers, tokked);
 		} else if(strncmp(buf, "put", 3) == 0) {
-			tokked = strtok(buf, spacedelim);
-			tokked = strtok(NULL, spacedelim);
-			if(strncmp(tokked, "users/", 6) == 0)
-				printf("Users is protected directory.\n");
-			else
-				put(servers, tokked);
+			if(strlen(buf) <= 4){
+				printf("Expected filename after put\n");
+			} else {
+				tokked = strtok(buf, spacedelim);
+				tokked = strtok(NULL, spacedelim);
+				if(strncmp(tokked, "users/", 6) == 0)
+					printf("Users is protected directory.\n");
+				else
+					put(servers, tokked);
+			}
 		} else if(strncmp(buf, "list", 4) == 0) {
 			list(servers);
 		} else if(strncmp(buf, "mkdir", 5) == 0) {

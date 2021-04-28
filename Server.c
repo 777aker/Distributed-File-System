@@ -29,6 +29,8 @@ void list(int con, struct User user); // handle list command
 void makedir(int con, char *buf, struct User user); // handle mkdir command
 struct User login(int con); // handle login command
 struct User logspc(int con, char *buf);
+void test();
+void testm(char message[]);
 
 char root[5];
 
@@ -41,6 +43,10 @@ void put(int con, struct User user) {
 	FILE *fp;
 	char filename[MAXBUF];
 
+	// I got tired of printf formatting and crap
+	test();
+	
+	/*
 	bzero(buf, MAXBUF);
 	strcpy(buf, "Ready");
 	write(con, buf, strlen(buf));
@@ -106,6 +112,16 @@ void put(int con, struct User user) {
 	strcpy(buf, "SUCCESS");
 	write(con, buf, strlen(buf));
 	fclose(fp);
+	*/
+}
+
+void test() {
+	printf("Test\n");
+}
+
+void testm(char message[]) {
+	printf("%s\n", message);
+	
 }
 
 void list(int con, struct User user) {
