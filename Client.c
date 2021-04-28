@@ -10,6 +10,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <openssl/md5.h>
 //#include <fcntl.h>
 
 #define MAXBUF 8192 // max buffer size
@@ -50,6 +51,7 @@ void logout(struct Servers servers); // handles a user logging out
 struct Servers reconnect(struct Servers servers); // try to reconnect to a server
 void writeservers(struct Servers servers, char *message); // write message to all servers
 void readservers(struct Servers servers); // reads message from each server
+int md5sumhash(char *filename); // compute the md5hash of a file
 
 void get(struct Servers servers, char *filename) {
 	//printf("%s\n", filename);
@@ -64,6 +66,21 @@ void put(struct Servers servers, char *filename) {
 	//printf("%s\n", filename);
 	// put files onto servers
 	// split file into fourths and send each fourth
+	FILE *fp;
+	int size;
+	int hashval;
+
+	fp = fopen(filename, "rb");
+	if(fp == NULL) {
+		printf("Couldn't open file %s cancelling\n", filename);
+		return;
+	}
+
+	size = file_size(filename);
+	printf("%d\n", size);
+
+	hashval = md5sumhash(filename);
+	printf("%d hash\n", hashval);
 
 }
 
@@ -71,6 +88,30 @@ void list(struct Servers servers) {
 	// get the files in servers and see if
 	// have all 4 parts
 
+}
+
+int md5sumhash(char *filename) {
+	unsigned char c[MD5_DIGEST_LENGTH];
+	int i;
+	FILE *fp = fopen(filename, "rb");
+	MD5_CTX mdContext;
+	int bytes;
+	unsigned char data[1024];
+	int value = 0;
+
+	if(fp == NULL) {
+		printf("Couldn't open %s for md5hash\n", filename);
+		return -1;
+	}
+
+	MD5_Init(&mdContext);
+	while((bytes = fread(data, 1, 1024, fp)) != 0)
+		MD5_Update(&mdContext, data, bytes);
+	MD5_Final(c, &mdContext);
+
+	for(i = 0; i < MD5_DIGEST_LENGTH; i++)
+		value += c[i];
+	return value;
 }
 
 void exitcmd(struct Servers servers) {
@@ -347,7 +388,7 @@ void clientlogic(struct Servers servers) {
 		printf("--------------\n");
 		printf("Command: ");
 		fgets(buf, MAXBUF, stdin);
-		
+
 		if(strncmp(buf, "exit", 4) == 0) {
 			exitcmd(servers);
 			break;
