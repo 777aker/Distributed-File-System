@@ -31,6 +31,7 @@ struct User login(int con); // handle login command
 struct User logspc(int con, char *buf);
 void test();
 void testm(char message[]);
+void puthelper(int con, struct User user);
 
 char root[5];
 
@@ -44,75 +45,77 @@ void put(int con, struct User user) {
 	char filename[MAXBUF];
 
 	// I got tired of printf formatting and crap
-	test();
+	//test();
 	
-	/*
 	bzero(buf, MAXBUF);
-	strcpy(buf, "Ready");
+	strcpy(buf, "ready");
 	write(con, buf, strlen(buf));
-	//printf("We in the put.\n");
+
+	//test();
+	puthelper(con, user);
+	puthelper(con, user);
+}
+
+void puthelper(int con, struct User user) {
+	char buf[MAXBUF];
+	FILE *fp;
+	char filename[MAXBUF];
+
+	//testm("Making file");
 	bzero(buf, MAXBUF);
-	bzero(filename, MAXBUF);
 	read(con, buf, MAXBUF);
-	//printf("Got %s\n", buf);
+	bzero(filename, MAXBUF);
 	strcpy(filename, root);
-	if(strlen(user.username) > 0) {
+	if(strlen(user.username) != 0) {
 		strcat(filename, "users/");
 		strcat(filename, user.username);
 		strcat(filename, "/");
 	}
 	strcat(filename, buf);
-	fp = fopen(filename, "w");
+	fp = fopen(filename, "wb");
 	if(fp == NULL) {
-		printf("file %s failed to create\n", filename);
+		testm("null");
 		bzero(buf, MAXBUF);
-		strcpy(buf, filename);
+		strcpy(buf, "Failed to create ");
+		strcat(buf, filename);
 		write(con, buf, strlen(buf));
 		return;
 	}
+	//testm("not null");
 	bzero(buf, MAXBUF);
-	strcpy(buf, "SUCCESS");
+	strcpy(buf, "created ");
+	strcat(buf, filename);
 	write(con, buf, strlen(buf));
 
+	
+	//testm("reading file");
 	bzero(buf, MAXBUF);
+	strcpy(buf, "start");
 	while(strcmp(buf, "EOF\r\n") != 0) {
 		bzero(buf, MAXBUF);
 		read(con, buf, MAXBUF);
-		fputs(buf, fp);
-	}
-	bzero(buf, MAXBUF);
-	strcpy(buf, "SUCCESS");
-	write(con, buf, strlen(buf));
-
-	bzero(buf, MAXBUF);
-	bzero(filename, MAXBUF);
-	read(con, buf, MAXBUF);
-	strcpy(filename, root);
-	if(strlen(user.username) > 0) {
-		strcat(filename, "users/");
-		strcat(filename, user.username);
-		strcat(filename, "/");
-	}
-	strcat(filename, buf);
-	fp = fopen(filename, "w");
-	if(fp == NULL) {
-		bzero(buf, MAXBUF);
-		strcpy(buf, filename);
-		write(con, buf, strlen(buf));
-		return;
+		//printf("got %s\n", buf);
+		if(strcmp(buf, "EOF\r\n") != 0) {
+			fputs(buf, fp);
+			bzero(buf, MAXBUF);
+			strcpy(buf, "ACK");
+			//printf("sending %s\n", buf);
+			write(con, buf, strlen(buf));
+		}
 	}
 
+	
+	//testm("sending success");
 	bzero(buf, MAXBUF);
-	while(strcmp(buf, "EOF\r\n") != 0) {
-		bzero(buf, MAXBUF);
-		read(con, buf, MAXBUF);
-		fputs(buf, fp);
-	}
-	bzero(buf, MAXBUF);
-	strcpy(buf, "SUCCESS");
+	strcpy(buf, "Successfully wrote ");
+	strcat(buf, filename);
+	printf("%s\n", buf);
+	//printf("sending %s\n", buf);
 	write(con, buf, strlen(buf));
+
+	
 	fclose(fp);
-	*/
+	printf("put helper done\n");
 }
 
 void test() {
@@ -121,7 +124,7 @@ void test() {
 
 void testm(char message[]) {
 	printf("%s\n", message);
-	
+
 }
 
 void list(int con, struct User user) {
