@@ -1,1 +1,115 @@
-Um, this a boy. So far just connected client and server and making sure that's a thing I can do. Hopefully potentially this will become a client server distributed file system eventually. rn though, just wanna make sure i can send a file from the client to the server.
+Time to make an actually decent readme that explains how to use.
+
+To make:
+Just type make in a directory with Makefile, dfc.c, dfs.c and a dfc.conf
+dfs.c will handle creating all the folders it needs and will make a 
+dfs.conf if it doesn't exist already.
+dfs.conf purely holds username and passwords so if it's deleted you won't
+have any users and passwords you've created.
+dfc.conf needs to hold the name of the servers and their ip and port
+dfc.conf file would look like this:
+Server DFS1 127.0.0.1:10001
+Server DFS2 127.0.0.1:10002
+Server DFS3 127.0.0.1:10003
+Server DFS4 127.0.0.1:10004
+
+To start a server:
+after making type './dfs DFS# port#''
+the server will start up and wait for clients to connect
+The write up says do './dfs DFS# port# &' but I have no
+clue what that & would be so I left it out. You can put it
+if you want but it does nothing and just ignores it.
+
+To start client:
+after making type './dfc dfc.conf'
+you can rename dfc.conf and use multiple if you want
+naming them different things and then changing dfc.conf
+to the one you want to use
+
+Extra Credit Done:
+Multiple connections - can handle any number of clients connecting to each
+server. They share a folder unless you login which is actually kinda
+nice and useful. During testing at least it was useful to share files
+between users when I wanted to. Clients can login if they want to have a 
+private folder not accessible to anyone else. Users is a folder
+in each directory that stores a users data through DFS#/users/username
+and no one is allowed to access users/ directory since that would be hacking.
+
+Subfolder - you can make directories in subfolders, you can get from
+subfolders, users can make subfolders in their private folder, basically
+all the subfolder implementation you could want.
+
+Traffic Optimization - get only gets the data it needs once. IE it will only
+get testingfile.txt.1 once even though there are technically two of them it
+could be getting.
+
+Didn't do data encryption that seemed complicated.
+
+Commands:
+Most of the commands will actually tell you the error
+or what you did wrong if you try to use them wrongly.
+They also prompt you what is going on so should be able
+to figure it out from the prompts. IE you forgot to put
+filename, did a bad file, forgot /, tried to go into users, 
+and so on so forth depending on how the user messed up. (How I
+kept messing up the commands and needed checks for so I didn't
+break it so often honestly)
+
+exit - closes the client and gracefully exits from the servers
+you could actually just do ctrl-c though and that works fine
+and is what I usually do since I'm lazy.
+
+get filename - get a file from the servers and put it into the folder
+client is running from. It will prompt you to enter the subdirectory
+if it is in one serverside after the command is started.
+
+put filename - puts a file to the servers. Prompts for a subdirectory
+if you want to put it in one. You can't put a file that's less than 4
+bytes because that would make errors and makes zero sense. How do you
+split a file that's 1 byte into 4 files to save and why would you want
+to do that.
+
+list - list files in the root. Also lists how many of the total needed
+are available. If it's a folder it lists how many servers have that folder
+currently available. Almost forgot this can only list a max of 50 files
+because of how I'm handling the file structure. but 50 seems excessive if
+you have more than 50 cut down your files or put them in folders. Could 
+actually be any arbitrary amount if you just change the files array to 
+be more than 50.
+
+list folder - same as list but inside of a folder. doesn't actually need / 
+at the end of folder specified. but can if you want.
+
+mkdir name - make a directory with the specified name. If you want directories
+within directories you have to make them one level at a time. IE to make the 
+directory testing/hello/hey you would have to do 
+mkdir testing
+mkdir testing/hello
+mkdir testing/hello/hey
+
+login - starts the sequence to login as a user. Will prompt for username and
+password. If the username doesn't exist it will ask if you want to make that
+user and then ask to enter a password for that user. Then it will write this
+new user to dfs.conf. If you are already logged in it will just change
+you to the other user on success. IE can't have users within users. While
+logged in you can only access your files and not the shared folder.
+
+logout - logs out of the current user. Allows you to access the shared
+folder again.
+
+connect - tries to reconnect to all the servers. IE if a server came online after
+you started the client try to connect to all the servers. (IE I kept forgetting
+to start the servers before the clients so fixed it by not having to lol)
+
+ERRORS (ish):
+If a server shuts down while client is connected the client will crash
+after a few of the transmissions fail.
+If a client shuts down while server connected then the server will just close the connection.
+If the client shuts down in the middle of a command though the server will
+sometimes crash depending on the command. If you redo the command once the server
+is up or once the client is up it will do it properly. Basically if stuff crashes
+just redo the command and it'll work.
+That's the only error type thing I found in my testing. (I did a lot of exhuastive
+testing too).
+They crash because KEEP_ALIVE is on and if you fail a few of those it shuts down
+the program.
