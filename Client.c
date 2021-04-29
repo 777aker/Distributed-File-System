@@ -70,14 +70,150 @@ int md5sumhash(char *filename); // compute the md5hash of a file
 // a helper for the put command so there isn't so much repeated code
 void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int filen);
 int listhash(char *name); // a hasher for list so i can make a cool dir structure
+// helper for the get command so I don't have to copy so much code
+int gethelper(struct Servers servers, char file[], FILE *fp); 
 
+int gethelper(struct Servers servers, char file[], FILE *fp) {
+	int sockets[4];
+	int position;
+	time_t t;
+	char buf[MAXBUF];
+	char ret[MAXBUF];
+	int i;
+	int success = 0;
+	char ack[MAXBUF];
+	int n;
+
+	bzero(ack, MAXBUF);
+	strcpy(ack, "ACK");
+
+	// I don't want to overload one server by trying to get file
+	// in same order everytime so gonna do excessive random method
+	// ie dont wanna do get dfs1 get dfs2 get dfs3 everytime but actually
+	// split it up a little
+	sockets[0] = servers.dfs1sock;
+	sockets[1] = servers.dfs2sock;
+	sockets[2] = servers.dfs3sock;
+	sockets[3] = servers.dfs4sock; 
+
+	srand((unsigned) time(&t));
+	position = rand() % 4;
+
+	bzero(buf, MAXBUF);
+	strcpy(buf, "get ");
+	strcat(buf, file);
+	// check each server to see if it has the fourth we are looking for
+	for(i = 0; i < 4; i++) {
+		if(sockets[(position + i) % 4] != -1) {
+			write(sockets[(position+i) % 4], buf, strlen(buf));
+			bzero(ret, MAXBUF);
+			read(sockets[(position+i) % 4], ret, MAXBUF);
+			printf("%s\n", ret);
+			// we got our boy cool
+			if(strncmp(ret, "opened", 6) == 0) {
+				position = (position+i) % 4;
+				i = 5;
+				success = 1;
+			}
+		}
+	}
+	// one of them did so let's start writing
+	if(success == 1) {
+		bzero(buf, MAXBUF);
+		strcpy(buf, "ready");
+		write(sockets[position], buf, MAXBUF);
+		// ---------- hanging somewhere past here
+		// start reading the file
+		// copied from put server bc get is just backwards put
+		while(strcmp(buf, "EOF\r\n") != 0) {
+			bzero(buf, MAXBUF);
+			n = read(sockets[position], buf, MAXBUF);
+			if(strcmp(buf, "EOF\r\n") != 0) {
+				fwrite(buf, 1, n, fp);
+				write(sockets[position], ack, strlen(ack));
+			}
+		}
+		return 1;
+	}
+
+
+	return 0;
+
+	//printf("%s\n", file);
+}
+
+// get a file from the servers
+// this is the efficient version that just gets one of each fourht
+// honestly because that's easier in my mind that getting each fourth from
+// each server
 void get(struct Servers servers, char *filename) {
 	//printf("%s\n", filename);
-	// get file from servers
-	// ask each server for a specific fourth until we get one
-	// then repeat for each fourth
-	// if you none of them provide a fourth then say file incomplete
+	FILE *fp;
+	char buf[MAXBUF];
+	char fullfile[MAXBUF];
+	char *tokked;
+	char delim[] = "\n";
+	char tempfile[MAXBUF];
+	int available = 0;
 
+	// try to create file
+	fp = fopen(filename, "wb");
+	if(fp == NULL) {
+		printf("Couldn't create file cancelling\n");
+		return;
+	}
+	
+	// gotta prompt them for subdirectory now
+	// copied from put command
+	bzero(buf, MAXBUF);
+	printf("Enter subdirectory including / at end or leave blank for root:\n");
+	fgets(buf, MAXBUF, stdin);
+	while(strlen(buf) != 1 && buf[strlen(buf)-2] != '/') {
+		bzero(buf, MAXBUF);
+		printf("Forgot / try again: ");
+		fgets(buf, MAXBUF, stdin);
+	}
+	bzero(fullfile, MAXBUF);
+	if(strlen(buf) != 1) {
+		tokked = strtok(buf, delim);
+		if(strncmp(tokked, "users/", 5) == 0) {
+			printf("users protected directory cancelling\n");
+			return;
+		}
+	} else {
+		tokked = strtok(buf, delim);
+	}
+	if(tokked != NULL) {
+		strcpy(fullfile, tokked);
+		strcat(fullfile, filename);
+	} else {
+		strcpy(fullfile, filename);
+	}
+	printf("getting %s\n", fullfile);
+
+	// ok, now figure out what fourth we want and send that to get helper
+	bzero(tempfile, MAXBUF);
+	strcpy(tempfile, fullfile);
+	strcat(tempfile, ".1");
+	available += gethelper(servers, tempfile, fp);
+	tempfile[strlen(tempfile)-1] = '2';
+	available += gethelper(servers, tempfile, fp);
+	tempfile[strlen(tempfile)-1] = '3';
+	available += gethelper(servers, tempfile, fp);
+	tempfile[strlen(tempfile)-1] = '4';
+	available += gethelper(servers, tempfile, fp);
+
+
+	fclose(fp);
+	if(available < 4) {
+		printf("Couldn't get whole file. File %s incomplete deleting\n", filename);
+		remove(filename);
+	} else {
+		printf("Retrieved entire file: %s\n", filename);
+	}
+
+	
+	//printf("Finished get\n");
 
 }
 
@@ -580,6 +716,8 @@ void list(struct Servers servers, char *directory) {
 	//printf("%s\n", testfile.name);
 	// print out all the file names
 	//printf("%ld\n", sizeof(files));
+	if(numfiles == 0)
+		printf("Empty directory\n");
 	for(i = 0; i < numfiles; i++) {
 		files[i].available += files[i].one;
 		files[i].available += files[i].two;
@@ -769,6 +907,11 @@ void put(struct Servers servers, char *filename) {
 	// we actually need the remainder too so we don't miss whatever little
 	// bit was left over in the file
 	size = file_size(filename);
+	if(size < 4) {
+		printf("File not large enough to store may be empty. Cancelling\n");
+		fclose(fp);
+		return;
+	}
 	//printf("size: %d\n", size);
 	remainder = size % 4;
 	//printf("remainder: %d\n", remainder);
