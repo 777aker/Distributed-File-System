@@ -90,11 +90,17 @@ void list(struct Servers servers, char *directory) {
 	char buf[MAXBUF]; // buf used for reading writing and various nonsense
 	char ret[MAXBUF]; // need a buffer that won't overwrite buf
 	struct File files[50]; // this array stores the files and directories and their info
+	//struct File testfile;
 	int numfiles = 0; // how many files there are
 	char ack[MAXBUF]; // ack packet
 	//char *tokked;
 	int i; // for for loops
 	int exists; // for checking if a file already exists or not
+
+	//bzero(buf, MAXBUF);
+	//strcpy(buf, "Paul Johnson");
+	//strcpy(files[numfiles].name, buf);
+	//printf("test: %s\n", files[numfiles].name);
 
 	// this bit is checking if they actually specified a directory
 	// if they didn't then we are opening the current root so do a .
@@ -172,22 +178,31 @@ void list(struct Servers servers, char *directory) {
 				//printf("writing\n");
 				write(servers.dfs1sock, ack, strlen(ack));
 				//break;
+				exists = 0;
+				for(i = 0; i < numfiles; i++) {
+					if(strcmp(files[i].name, buf) == 0) {
+						exists = 1;
+						break;
+					}
+				}
+				if(exists == 0) {
+					strcpy(files[numfiles].name, buf);
+					numfiles++;
+				}
 			}
 			// we just got a directory, not we need to put it into
 			// our list of directories
 			// check if it's already in our list, if not
 			// put it into our list
-			/*
-			exists = 0;
-			for(i = 0; i < numfiles; i++) {
-				if(strcmp(files[i].name, buf) == 0)
-					exists = 1;
-			}
-			if(exists == 0) {
-				strcpy(files[numfiles].name, buf);
-				numfiles++;
-			}
-			*/
+			
+			
+			
+			//printf("%d: buf %s\n", numfiles, buf);
+			//bzero(files[numfiles]->name, MAXBUF);
+			//strcpy(files[numfiles].name, "Paul Johnson");
+			//strcpy(files[numfiles]->name, buf);
+			//files[numfiles].name = buf;
+			//numfiles++;
 		}
 	}
 	// same thing as dfs1 above but do it for each server now
@@ -201,18 +216,25 @@ void list(struct Servers servers, char *directory) {
 			if(strcmp(buf, "N M D") != 0) {
 				write(servers.dfs2sock, ack, strlen(ack));
 				//break;
+				exists = 0;
+				for(i = 0; i < numfiles; i++) {
+					if(strcmp(files[i].name, buf) == 0) {
+						exists = 1;
+						break;
+					}
+				}
+				if(exists == 0) {
+					strcpy(files[numfiles].name, buf);
+					numfiles++;
+				}
 			}
-			/*
-			exists = 0;
-			for(i = 0; i < numfiles; i++) {
-				if(strcmp(files[i].name, buf) == 0)
-					exists = 1;
-			}
-			if(exists == 0) {
-				strcpy(files[numfiles].name, buf);
-				numfiles++;
-			}
-			*/
+			
+			//printf("%d: buf %s\n", numfiles, buf);
+			//bzero(files[numfiles]->name, MAXBUF);
+			//strcpy(files[numfiles].name, "Paul Johnson");
+			//strcpy(files[numfiles]->name, buf);
+			//files[numfiles].name = buf;
+			//numfiles++;
 		}
 	}
 	bzero(buf, MAXBUF);
@@ -225,18 +247,25 @@ void list(struct Servers servers, char *directory) {
 			if(strcmp(buf, "N M D") != 0) {
 				write(servers.dfs3sock, ack, strlen(ack));
 				//break;
+				exists = 0;
+				for(i = 0; i < numfiles; i++) {
+					if(strcmp(files[i].name, buf) == 0) {
+						exists = 1;
+						break;
+					}
+				}
+				if(exists == 0) {
+					strcpy(files[numfiles].name, buf);
+					numfiles++;
+				}
 			}
-			/*
-			exists = 0;
-			for(i = 0; i < numfiles; i++) {
-				if(strcmp(files[i].name, buf) == 0)
-					exists = 1;
-			}
-			if(exists == 0) {
-				strcpy(files[numfiles].name, buf);
-				numfiles++;
-			}
-			*/
+			
+			//printf("%d: buf %s\n", numfiles, buf);
+			//bzero(files[numfiles]->name, MAXBUF);
+			//strcpy(files[numfiles].name, "Paul Johnson");
+			//strcpy(files[numfiles]->name, buf);
+			//files[numfiles].name = buf;
+			//numfiles++;
 		}
 	}
 	bzero(buf, MAXBUF);
@@ -249,26 +278,35 @@ void list(struct Servers servers, char *directory) {
 			if(strcmp(buf, "N M D") != 0) {
 				write(servers.dfs4sock, ack, strlen(ack));
 				//break;
+				exists = 0;
+				for(i = 0; i < numfiles; i++) {
+					if(strcmp(files[i].name, buf) == 0) {
+						exists = 1;
+						break;
+					}
+				}
+				if(exists == 0) {
+					strcpy(files[numfiles].name, buf);
+					numfiles++;
+				}
 			}
-			/*
-			exists = 0;
-			for(i = 0; i < numfiles; i++) {
-				if(strcmp(files[i].name, buf) == 0)
-					exists = 1;
-			}
-			if(exists == 0) {
-				strcpy(files[numfiles].name, buf);
-				numfiles++;
-			}
-			*/
+			
+			//printf("%d: buf %s\n", numfiles, buf);
+			//bzero(files[numfiles]->name, MAXBUF);
+			//strcpy(files[numfiles].name, "Paul Johnson");
+			//strcpy(files[numfiles]->name, buf);
+			//files[numfiles].name = buf;
+			//numfiles++;
 		}
 	}
+	//strcpy(testfile.name, "Paul Johnson");
+	//printf("%s\n", testfile.name);
 	// print out all the file names
-	/*
+	//printf("%ld\n", sizeof(files));
 	for(i = 0; i < numfiles; i++) {
-		printf("%d: %s\n", i, files[numfiles].name);
+		printf("%d: %s\n", i, files[i].name);
 	}
-	*/
+	
 	
 
 	//printf("end of list\n");
