@@ -36,6 +36,21 @@ struct Servers {
 
 };
 
+// this is a structure used by list to keep track of files
+// and if they are complete
+struct File {
+
+	char name[MAXBUF];
+	int available;
+	int one;
+	int two;
+	int three;
+	int four;
+
+};
+
+// a whole lot of function declarations
+// more description provided above implementation of each function
 struct Servers handleconf(FILE *fp); // read's the dfc.conf file and parses info
 void connectservers(struct Servers servers); // connect to the 4 servers
 void clientlogic(struct Servers servers); // where the client's processing and actions happen
@@ -54,6 +69,7 @@ void readservers(struct Servers servers); // reads message from each server
 int md5sumhash(char *filename); // compute the md5hash of a file
 // a helper for the put command so there isn't so much repeated code
 void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int filen);
+int listhash(char *name); // a hasher for list so i can make a cool dir structure
 
 void get(struct Servers servers, char *filename) {
 	//printf("%s\n", filename);
@@ -65,13 +81,23 @@ void get(struct Servers servers, char *filename) {
 
 }
 
+// this handles the list command which displays subdirectories and files
+// in a directory specified
 void list(struct Servers servers, char *directory) {
 	// get the files in servers and see if
 	// have all 4 parts
-	char dir[MAXBUF];
-	char buf[MAXBUF];
-	char ret[MAXBUF];
+	char dir[MAXBUF]; // actual directory to look into
+	char buf[MAXBUF]; // buf used for reading writing and various nonsense
+	char ret[MAXBUF]; // need a buffer that won't overwrite buf
+	struct File files[50]; // this array stores the files and directories and their info
+	int numfiles = 0; // how many files there are
+	char ack[MAXBUF]; // ack packet
+	//char *tokked;
+	int i; // for for loops
+	int exists; // for checking if a file already exists or not
 
+	// this bit is checking if they actually specified a directory
+	// if they didn't then we are opening the current root so do a .
 	bzero(dir, MAXBUF);
 	if(directory == NULL) {
 		strcpy(dir, ".");
@@ -80,54 +106,199 @@ void list(struct Servers servers, char *directory) {
 		strcpy(dir, directory);
 	}
 
+	// making the command to send to the servers
 	bzero(buf, MAXBUF);
 	strcpy(buf, "list ");
 	strcat(buf, dir);
 
+	// sending the command to the servers "list directory"
 	bzero(ret, MAXBUF);
 	if(servers.dfs1sock != -1) {
-		printf("writing %s\n", buf);
+		//printf("writing %s\n", buf);
 		write(servers.dfs1sock, buf, strlen(buf));
 		read(servers.dfs1sock, ret, MAXBUF);
 		if(strcmp(ret, "opened") != 0)
 			servers.dfs1sock = -1;
-		printf("%s\n", ret);
+		//printf("%s\n", ret);
 	}
 	bzero(ret, MAXBUF);
 	if(servers.dfs2sock != -1) {
-		printf("writing %s\n", buf);
+		//printf("writing %s\n", buf);
 		write(servers.dfs2sock, buf, strlen(buf));
 		read(servers.dfs2sock, ret, MAXBUF);
 		if(strcmp(ret, "opened") != 0)
 			servers.dfs2sock = -1;
-		printf("%s\n", ret);
+		//printf("%s\n", ret);
 	}
 	bzero(ret, MAXBUF);
 	if(servers.dfs3sock != -1) {
-		printf("writing %s\n", buf);
+		//printf("writing %s\n", buf);
 		write(servers.dfs3sock, buf, strlen(buf));
 		read(servers.dfs3sock, ret, MAXBUF);
 		if(strcmp(ret, "opened") != 0)
 			servers.dfs3sock = -1;
-		printf("%s\n", ret);
+		//printf("%s\n", ret);
 	}
 	bzero(ret, MAXBUF);
 	if(servers.dfs4sock != -1) {
-		printf("writing %s\n", buf);
+		//printf("writing %s\n", buf);
 		write(servers.dfs4sock, buf, strlen(buf));
 		read(servers.dfs4sock, ret, MAXBUF);
 		if(strcmp(ret, "opened") != 0)
 			servers.dfs4sock = -1;
-		printf("%s\n", ret);
+		//printf("%s\n", ret);
 	}
 
+	// letting the servers know we finished 
+	// sending list directories and are ready for the next phase
 	bzero(buf, MAXBUF);
 	strcpy(buf, "continue");
 	writeservers(servers, buf);
 
-	printf("end of list\n");
+
+	// now we actually get each servers dir
+	bzero(buf, MAXBUF);
+	strcpy(buf, "lets gooo");
+	bzero(ack, MAXBUF);
+	strcpy(ack, "ACK");
+	if(servers.dfs1sock != -1) {
+		// while we don't get N M D which means no more directories
+		// keep reading from the server
+		while(strcmp(buf, "N M D") != 0) {
+			bzero(buf, MAXBUF);
+			read(servers.dfs1sock, buf, MAXBUF);
+			//printf("read %s\n", buf);
+			if(strcmp(buf, "N M D") != 0) {
+				//printf("writing\n");
+				write(servers.dfs1sock, ack, strlen(ack));
+				//break;
+			}
+			// we just got a directory, not we need to put it into
+			// our list of directories
+			// check if it's already in our list, if not
+			// put it into our list
+			/*
+			exists = 0;
+			for(i = 0; i < numfiles; i++) {
+				if(strcmp(files[i].name, buf) == 0)
+					exists = 1;
+			}
+			if(exists == 0) {
+				strcpy(files[numfiles].name, buf);
+				numfiles++;
+			}
+			*/
+		}
+	}
+	// same thing as dfs1 above but do it for each server now
+	bzero(buf, MAXBUF);
+	strcpy(buf, "lets gooo");
+	if(servers.dfs2sock != -1) {
+		while(strcmp(buf, "N M D") != 0) {
+			bzero(buf, MAXBUF);
+			read(servers.dfs2sock, buf, MAXBUF);
+			//printf("read %s\n", buf);
+			if(strcmp(buf, "N M D") != 0) {
+				write(servers.dfs2sock, ack, strlen(ack));
+				//break;
+			}
+			/*
+			exists = 0;
+			for(i = 0; i < numfiles; i++) {
+				if(strcmp(files[i].name, buf) == 0)
+					exists = 1;
+			}
+			if(exists == 0) {
+				strcpy(files[numfiles].name, buf);
+				numfiles++;
+			}
+			*/
+		}
+	}
+	bzero(buf, MAXBUF);
+	strcpy(buf, "lets gooo");
+	if(servers.dfs3sock != -1) {
+		while(strcmp(buf, "N M D") != 0) {
+			bzero(buf, MAXBUF);
+			read(servers.dfs3sock, buf, MAXBUF);
+			//printf("read %s\n", buf);
+			if(strcmp(buf, "N M D") != 0) {
+				write(servers.dfs3sock, ack, strlen(ack));
+				//break;
+			}
+			/*
+			exists = 0;
+			for(i = 0; i < numfiles; i++) {
+				if(strcmp(files[i].name, buf) == 0)
+					exists = 1;
+			}
+			if(exists == 0) {
+				strcpy(files[numfiles].name, buf);
+				numfiles++;
+			}
+			*/
+		}
+	}
+	bzero(buf, MAXBUF);
+	strcpy(buf, "lets gooo");
+	if(servers.dfs4sock != -1) {
+		while(strcmp(buf, "N M D") != 0) {
+			bzero(buf, MAXBUF);
+			read(servers.dfs4sock, buf, MAXBUF);
+			//printf("read %s\n", buf);
+			if(strcmp(buf, "N M D") != 0) {
+				write(servers.dfs4sock, ack, strlen(ack));
+				//break;
+			}
+			/*
+			exists = 0;
+			for(i = 0; i < numfiles; i++) {
+				if(strcmp(files[i].name, buf) == 0)
+					exists = 1;
+			}
+			if(exists == 0) {
+				strcpy(files[numfiles].name, buf);
+				numfiles++;
+			}
+			*/
+		}
+	}
+	// print out all the file names
+	/*
+	for(i = 0; i < numfiles; i++) {
+		printf("%d: %s\n", i, files[numfiles].name);
+	}
+	*/
+	
+
+	//printf("end of list\n");
 }
 
+int listhash(char *name) {
+	// I was going to use this to do an efficient list with hashing instead
+	// of just go through the list, but the list is small enough and this
+	// is a little overkill and I'm tired so not gonna do that
+	unsigned char hashval[MD5_DIGEST_LENGTH];
+	MD5_CTX mdContext;
+	int value = 0;
+	int i = 0;
+	char namec[MAXBUF];
+
+	bzero(namec, MAXBUF);
+	strcpy(namec, name);
+
+	MD5_Init(&mdContext);
+	MD5_Update(&mdContext, namec, strlen(namec));
+	MD5_Final(hashval, &mdContext);
+
+	for(i = 0; i < MD5_DIGEST_LENGTH; i++)
+		value += hashval[i];
+	value = value % 50;
+	return value;
+}
+
+// this function helps keep code down since put does the same thing just
+// with different combinations
 void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int filen) {
 	int fourth = 0;
 	char buf[MAXBUF];
@@ -137,6 +308,10 @@ void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int fi
 	char snum[4];
 	char ack[MAXBUF];
 
+	// create our file to write
+	// have to append which segment of the file this is
+	// since I store files as example.txt.1
+	// or example.txt.3 depending on which section of the file it is
 	bzero(newfile, MAXBUF);
 	strcpy(newfile, filename);
 	strcat(newfile, ".");
@@ -147,6 +322,7 @@ void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int fi
 	//printf("%d, %d\n", serv1, serv2);
 
 	//printf("creating files\n");
+	// create the files on the server
 	if(serv1 != -1) {
 		write(serv1, newfile, strlen(newfile));
 		bzero(buf, MAXBUF);
@@ -170,8 +346,15 @@ void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int fi
 
 	
 	//printf("writing files\n");
+	// now time to write the file info to the server
 	bzero(buf, MAXBUF);
+	// size is actually the size we need to read for this section
+	// ie 1/4 the total file size
+	// fourth is how much of it we've transmitted
+	// so while we haven't transmitted 1/4 of the data keep going
 	while(fourth <= size-1) {
+		// if we've filled up our buf than send it to the servers
+		// and empty it so we can keep reading and sending data
 		if(bufi >= MAXBUF) {
 			//printf("sending %d\n", bufi);
 			//printf("sending %s", buf);
@@ -190,6 +373,7 @@ void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int fi
 			bufi = 0;
 			bzero(buf, MAXBUF);
 		}
+		// get a char, increment our variables
 		c = (char) fgetc(fp);
 		buf[bufi] = c;
 		bufi++;
@@ -197,6 +381,8 @@ void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int fi
 		//printf("size: %d, bufi: %d, fourth: %d\n", size, bufi, fourth);
 	}
 	
+	// send the last bit of our buffer since the loop exits once we've read 1/4
+	// the data and doesn't send buf. so we gotta send our last bit of the data
 	//printf("sending %d\n", bufi);
 	if(serv1 != -1) {
 		write(serv1, buf, bufi);
@@ -211,6 +397,7 @@ void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int fi
 		//printf("received final %s\n", ack);
 	}
 
+	// that was the end of the file so send our EOF signal to servers
 	//printf("Finished writing\n");
 	bzero(buf, MAXBUF);
 	strcpy(buf, "EOF\r\n");
@@ -223,7 +410,8 @@ void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int fi
 	}
 
 	//printf("Reading success\n");
-	
+	// get the message servers sent back which should be that the file was
+	// created and completed
 	bzero(buf, MAXBUF);
 	if(serv1 != -1) {
 		read(serv1, buf, MAXBUF);
@@ -251,37 +439,46 @@ void put(struct Servers servers, char *filename) {
 	char fullfile[MAXBUF];
 	int remainder;
 
+	// open the file on our end for reading
 	fp = fopen(filename, "rb");
 	if(fp == NULL) {
 		printf("Couldn't open file %s cancelling\n", filename);
 		return;
 	}
 
+	// get the size of the file and split it into fourths for transmission
+	// we actually need the remainder too so we don't miss whatever little
+	// bit was left over in the file
 	size = file_size(filename);
-	printf("size: %d\n", size);
+	//printf("size: %d\n", size);
 	remainder = size % 4;
-	printf("remainder: %d\n", remainder);
+	//printf("remainder: %d\n", remainder);
 	size = size / 4;
-	printf("newsize: %d\n", size);
+	//printf("newsize: %d\n", size);
 
 	//printf("%d\n", size);
-
+	// get the hashvalue of our file
 	hashval = md5sumhash(filename);
 	hashval = hashval % 4;
 	//printf("%d hash\n", hashval);
 
+	// prompt user for the subdirectory
 	bzero(buf, MAXBUF);
 	printf("Enter subdirectory including / at end or leave blank for root:\n");
 	fgets(buf, MAXBUF, stdin);
+	// need the / so check for that (I kept messing this up and crashing it lol)
+	// so mostly did this bc I kept messing up input
 	while(strlen(buf) != 1 && buf[strlen(buf)-2] != '/') {
 		printf("%s\n", buf);
 		bzero(buf, MAXBUF);
 		printf("Forgot / try again: ");
 		fgets(buf, MAXBUF, stdin);
 	}
+	// if they didn't want a subdirectory could've left it blank so handle that too
 	bzero(fullfile, MAXBUF);
 	if(strlen(buf) != 1) {
 		tokked = strtok(buf, delim);
+		// also make sure they aren't trying to get into users like a bunch of hackers
 		if(strncmp(tokked, "users/", 5) == 0) {
 			printf("users protected directory cancelling\n");
 			return;
@@ -295,12 +492,15 @@ void put(struct Servers servers, char *filename) {
 	} else {
 		strcat(fullfile, filename);
 	}
+	// ok, finished constructing our full filename cool
 	printf("%d: Putting %s to %s\n", hashval, filename, fullfile);
 
+	// send put command to servers
 	bzero(buf, MAXBUF);
 	strcpy(buf, "put");
 	writeservers(servers, buf);
 	
+	// check and make sure each server got put command
 	if(servers.dfs1sock != -1) {
 		bzero(buf, MAXBUF);
 		read(servers.dfs1sock, buf, MAXBUF);
@@ -334,8 +534,17 @@ void put(struct Servers servers, char *filename) {
 		printf("Not connected to DFS4 file may be incomplete.\n");
 	}
 
+	// now depending on the hash value transmit and differnt portion of the file
+	// to each server
 	switch(hashval) {
 		case 0:
+			// puthelper params:
+			//server1 to transmit to, 
+			// server 2 to transmit to,
+			// file pointer: shared which means we can read easily from section to section
+			// size to read
+			// name of file 
+			// which section of the file we are transmitting
 			puthelper(servers.dfs4sock, servers.dfs1sock, fp, size, fullfile, 1);
 			puthelper(servers.dfs1sock, servers.dfs2sock, fp, size, fullfile, 2);
 			puthelper(servers.dfs2sock, servers.dfs3sock, fp, size, fullfile, 3);
@@ -370,6 +579,7 @@ void put(struct Servers servers, char *filename) {
 	fclose(fp);
 }
 
+// this gets the md5 hash of a file
 int md5sumhash(char *filename) {
 	unsigned char c[MD5_DIGEST_LENGTH];
 	int i;
@@ -383,17 +593,20 @@ int md5sumhash(char *filename) {
 		printf("Couldn't open %s for md5hash\n", filename);
 		return -1;
 	}
-
+	// get that md5 hash
 	MD5_Init(&mdContext);
 	while((bytes = fread(data, 1, 1024, fp)) != 0)
 		MD5_Update(&mdContext, data, bytes);
 	MD5_Final(c, &mdContext);
-
+	// turn it into an int bc that's what I want
 	for(i = 0; i < MD5_DIGEST_LENGTH; i++)
 		value += c[i];
 	return value;
 }
 
+// this sends the exit command to each server to gracefully
+// close the client, you can actually just ctrl c the client tho
+// which is what I usually do so not very useful honestly
 void exitcmd(struct Servers servers) {
 	// send servers exit signal
 	char buf[] = "END CONNECTION\r\n";
@@ -414,11 +627,14 @@ void exitcmd(struct Servers servers) {
 
 }
 
+// this is the mkdir command which will make a subfolder on the servers
 void makedir(struct Servers servers, char *dirname) {
 	//printf("%s\n", dirname);
 	// make a subdirectory in current directory
 	char buf[MAXBUF];
 
+	// pretty straighforword command actually
+	// just, send command mkdir directory to servers, and read what they said bakc
 	bzero(buf, MAXBUF);
 	strcpy(buf, "mkdir ");
 	strcat(buf, dirname);
@@ -453,6 +669,7 @@ void makedir(struct Servers servers, char *dirname) {
 	}
 }
 
+// this is the login command for users
 void login(struct Servers servers) {
 	// login as a user for private drive
 	// username and password
@@ -461,6 +678,10 @@ void login(struct Servers servers) {
 	char username[32];
 	char password[32];
 
+	// ok, so servers share dfs.conf file which is where
+	// username and passwords are, which means we just need
+	// to connect to one server for the login password part
+	// so find first available server and start login process
 	strcpy(buf, "login");
 	if(servers.dfs1sock != -1)
 		sock = servers.dfs1sock;
@@ -474,12 +695,18 @@ void login(struct Servers servers) {
 		printf("No servers available cancelling login.\n");
 		return;
 	}
+	// we found someone to login too cool start sending stuff to them
 	write(sock, buf, strlen(buf));
 
+	// get the user they want to login too
 	printf("Username: ");
 	fgets(buf, MAXBUF, stdin);
 	// strtok is destructive heheheeeee
 	strtok(buf, "\n");
+	// check to make sure they didn't do a bad
+	// we are actually in the users folder so now they can make a user called
+	// users, but that doesn't let them hack or anything since they'll be in
+	// users/users/ and only users/ protected
 	while(strlen(buf) > 32 || strlen(buf) < 3 || strchr(buf, ':') != NULL) {
 		printf("Username too long or too short or contains :.\n Must be 3-32 characters no :. Try agagin\n");
 		printf("Username: ");
@@ -488,11 +715,15 @@ void login(struct Servers servers) {
 		strtok(buf, "\n");
 	}
 	
+	// write the username to the server
 	strcpy(username, buf);
 	write(sock, buf, strlen(buf));
+	// server will send whether the username exists already or not
 	bzero(buf, strlen(buf));
 	read(sock, buf, MAXBUF);
+	// if the user exists already
 	if(strcmp(buf, "FUSR") == 0) {
+		// you only get 3 guesses at the password
 		int attempts = 3;
 		while(attempts > 0) {
 			printf("Enter password: ");
@@ -501,10 +732,18 @@ void login(struct Servers servers) {
 			strtok(buf, "\n");
 			strcpy(password, buf);
 			//printf("%s\n", buf);
+			// write the password to the server and see if
+			// server said it was good or not
 			write(sock, buf, strlen(buf));
 			bzero(buf, MAXBUF);
 			read(sock, buf, MAXBUF);
+			// oh, good job you got the password right
 			if(strcmp(buf, "SUCCESS") == 0) {
+				// there's actually a special login
+				// bc we've confirmed the user exists and 
+				// the password was right
+				// so there's a special command that bypasses
+				// the login sequence for simplicity
 				bzero(buf, strlen(buf));
 				strcpy(buf, "logspc ");
 				strcat(buf, username);
@@ -518,6 +757,7 @@ void login(struct Servers servers) {
 			printf("Wrong password try again. %d attempts remaining\n", attempts);
 		}
 	} else {
+		// the user doesn't exist so start the process to make a user
 		printf("User doesn't exist. Create user? (y/n): ");
 		bzero(buf, strlen(buf));
 		fgets(buf, MAXBUF, stdin);
@@ -527,23 +767,32 @@ void login(struct Servers servers) {
 			bzero(buf, strlen(buf));
 			fgets(buf, MAXBUF, stdin);
 			strtok(buf, "\n");
+			// make sure not bad password
+			// the : exclusion is because that's how we seperate users:password
+			// in dfs.conf so if they put that in the password it'd be a pain
+			// to split user:password and come out wrong
 			while(strlen(buf) > 32 || strlen(buf) < 3 || strchr(buf, ':') != NULL) {
 				printf("Password must be 3-32 characters long and not contain :.\n Try again: ");
 				bzero(buf, strlen(buf));
 				fgets(buf, MAXBUF, stdin);
 				strtok(buf, "\n");
 			}
+			// make are cool new user
 			write(sock, buf, strlen(buf));
 			strcpy(password, buf);
 			bzero(buf, strlen(buf));
 			read(sock, buf, MAXBUF);
 			bzero(buf, strlen(buf));
+			// do our special login 
 			strcpy(buf, "logspc ");
 			strcat(buf, username);
 			strcat(buf, ":");
 			strcat(buf, password);
 			writeservers(servers, buf);
 		} else {
+			// they said they didn't wanna make a user
+			// so send that to the server we connected to
+			// and stop the command process
 			bzero(buf, strlen(buf));
 			strcpy(buf, "n");
 			//printf("%s\n", buf);
@@ -555,11 +804,14 @@ void login(struct Servers servers) {
 
 }
 
+// logout of the user we are logged in as
 void logout(struct Servers servers) {
 	// logout of the user so they can access shared drive again
 	char buf[] = "logout";
 	char ret[MAXBUF];
 
+	// this is actually just a really straightforward command on client end
+	// just send logout and see if successful or not
 	printf("Logging out of servers.\n");
 	if(servers.dfs1sock != -1) {
 		write(servers.dfs1sock, buf, strlen(buf));
@@ -604,7 +856,7 @@ void logout(struct Servers servers) {
 // so some things that should use this don't
 // just sends a message to each server
 void writeservers(struct Servers servers, char *message) {
-	printf("write msg: %s\n", message);
+	//printf("write msg: %s\n", message);
 	if(servers.dfs1sock != -1)
 		write(servers.dfs1sock, message, strlen(message));
 	if(servers.dfs2sock != -1)
@@ -615,6 +867,10 @@ void writeservers(struct Servers servers, char *message) {
 		write(servers.dfs4sock, message, strlen(message));
 }
 
+// reads a message from each server
+// I don't actually end up using this even though
+// probably would've been a good idea for acks I don't 
+// particularly care about
 void readservers(struct Servers servers) {
 	char buf[MAXBUF];
 
@@ -636,11 +892,16 @@ void readservers(struct Servers servers) {
 	}
 }
 
+// this command allows the user to try to reconnect to the servers
+// maybe they were put up and you wanna check
 struct Servers reconnect(struct Servers servers) {
 	// check if still connected to each server
 	// for each server not connected to try to reconnect
 	char buf[] = "Connected";
 
+	// pretty straightforward really
+	// if just calls the method connect for each server
+	// and sends the preliminary we connected message to the server
 	if(servers.dfs1sock == -1) {
 		printf("Not connected to DFS1 attempting connect.\n");
 		servers.dfs1sock = connectserver(servers.dfs1ip, servers.dfs1port);
@@ -664,6 +925,8 @@ struct Servers reconnect(struct Servers servers) {
 	return servers;
 }
 
+
+// this is mostly just handling user input in a while loop
 void clientlogic(struct Servers servers) {
 	char buf[MAXBUF];
 	char spacedelim[] = " \r\n"; // for splitting on space
@@ -671,7 +934,7 @@ void clientlogic(struct Servers servers) {
 	int optval = 1;
 	socklen_t optlen = sizeof(optval);
 
-	// preliminary connected message
+	// preliminary connected message that needs to be sent to the servers
 	strcpy(buf, "Connected");
 	if(servers.dfs1sock != -1)
 		write(servers.dfs1sock, buf, strlen(buf));
@@ -690,11 +953,13 @@ void clientlogic(struct Servers servers) {
 		printf("--------------\n");
 		printf("Command: ");
 		fgets(buf, MAXBUF, stdin);
-
+		// exit command
 		if(strncmp(buf, "exit", 4) == 0) {
 			exitcmd(servers);
 			break;
+		// get command
 		} else if(strncmp(buf, "get", 3) == 0) {
+			// get the filename we are getting
 			tokked = strtok(buf, spacedelim);
 			tokked = strtok(NULL, spacedelim);
 			if(tokked == NULL) {
@@ -704,7 +969,9 @@ void clientlogic(struct Servers servers) {
 			} else {
 				get(servers, tokked);
 			}
+		// put command
 		} else if(strncmp(buf, "put", 3) == 0) {
+			// get filename for the put command
 			tokked = strtok(buf, spacedelim);
 			tokked = strtok(NULL, spacedelim);
 			if(tokked == NULL) {
@@ -714,6 +981,7 @@ void clientlogic(struct Servers servers) {
 			} else {
 				put(servers, tokked);
 			}
+		// list command cool
 		} else if(strncmp(buf, "list", 4) == 0) {
 			tokked = strtok(buf, spacedelim);
 			tokked = strtok(NULL, spacedelim);
@@ -722,6 +990,9 @@ void clientlogic(struct Servers servers) {
 			} else {
 				list(servers, tokked);
 			}
+		// these explanations suck but I mean, these
+		// are just checking user input and calling the method
+		// which is pretty straightforward and simple
 		} else if(strncmp(buf, "mkdir", 5) == 0) {
 			tokked = strtok(buf, spacedelim);
 			tokked = strtok(NULL, spacedelim);
@@ -731,6 +1002,7 @@ void clientlogic(struct Servers servers) {
 				printf("Protected directory can't make.\n");
 			else
 				makedir(servers, tokked);
+		// this one literally just calls the method 
 		} else if(strncmp(buf, "login", 5) == 0) {
 			login(servers);
 		} else if(strncmp(buf, "logout", 6) == 0) {
@@ -760,6 +1032,7 @@ void clientlogic(struct Servers servers) {
 	}
 }
 
+// this connects to each of the servers
 void connectservers(struct Servers servers) {
 	
 	// connect to all the servers
