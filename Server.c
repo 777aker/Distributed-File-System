@@ -48,7 +48,7 @@ int file_size(char *name) {
 	long size = -1;
 	if(fp) {
 		fseek(fp, 0, SEEK_END);
-		size = ftell(fp)-1;
+		size = ftell(fp);
 		fclose(fp);
 	}
 	return size;
