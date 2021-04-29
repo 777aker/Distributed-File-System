@@ -113,3 +113,7 @@ That's the only error type thing I found in my testing. (I did a lot of exhuasti
 testing too).
 They crash because KEEP_ALIVE is on and if you fail a few of those it shuts down
 the program.
+
+Oh yeah, almost forgot to say: I have no clue how to get the elra machines working
+they just hate me. If there's an issue please let me know. I'd be happy to demo
+or something I really need a good grade on this homework.
