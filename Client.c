@@ -97,6 +97,7 @@ void list(struct Servers servers, char *directory) {
 	int i; // for for loops
 	int exists; // for checking if a file already exists or not
 	char tmpbuf[MAXBUF];
+	int end;
 
 	//bzero(buf, MAXBUF);
 	//strcpy(buf, "Paul Johnson");
@@ -162,6 +163,8 @@ void list(struct Servers servers, char *directory) {
 	strcpy(buf, "continue");
 	writeservers(servers, buf);
 
+	// this next part is a lot and I should've written a method for it 
+	// but it's 3am and I'm tired
 
 	// now we actually get each servers dir
 	bzero(buf, MAXBUF);
@@ -179,30 +182,36 @@ void list(struct Servers servers, char *directory) {
 				//printf("writing\n");
 				write(servers.dfs1sock, ack, strlen(ack));
 				//break;
+				end = 0;
+				// ok, so here we figure out if it's a fourth of a file
+				// through our amazing extension method
+				// we also remove the extension for printing just the filename
 				if(strcmp(buf+strlen(buf)-2, ".1") == 0) {
 					bzero(tmpbuf, MAXBUF);
 					strncpy(tmpbuf, buf, strlen(buf)-2);
 					bzero(buf, MAXBUF);
 					strcpy(buf, tmpbuf);
-				}
-				if(strcmp(buf+strlen(buf)-2, ".2") == 0) {
+					end = 1;
+				} else if(strcmp(buf+strlen(buf)-2, ".2") == 0) {
 					bzero(tmpbuf, MAXBUF);
 					strncpy(tmpbuf, buf, strlen(buf)-2);
 					bzero(buf, MAXBUF);
 					strcpy(buf, tmpbuf);
-				}
-				if(strcmp(buf+strlen(buf)-2, ".3") == 0) {
+					end = 2;
+				} else if(strcmp(buf+strlen(buf)-2, ".3") == 0) {
 					bzero(tmpbuf, MAXBUF);
 					strncpy(tmpbuf, buf, strlen(buf)-2);
 					bzero(buf, MAXBUF);
 					strcpy(buf, tmpbuf);
-				}
-				if(strcmp(buf+strlen(buf)-2, ".4") == 0) {
+					end = 3;
+				} else if(strcmp(buf+strlen(buf)-2, ".4") == 0) {
 					bzero(tmpbuf, MAXBUF);
 					strncpy(tmpbuf, buf, strlen(buf)-2);
 					bzero(buf, MAXBUF);
 					strcpy(buf, tmpbuf);
+					end = 4;
 				}
+				// check to see if the file already exists
 				exists = 0;
 				for(i = 0; i < numfiles; i++) {
 					if(strcmp(files[i].name, buf) == 0) {
@@ -210,10 +219,49 @@ void list(struct Servers servers, char *directory) {
 						break;
 					}
 				}
+				// if it doesn't exist add it to our list of files
 				if(exists == 0) {
+					// intialize everything that needs to be intialized
 					strcpy(files[numfiles].name, buf);
+					files[numfiles].one = 0;
+					files[numfiles].two = 0;
+					files[numfiles].three = 0;
+					files[numfiles].four = 0;
+					files[numfiles].available = 0;
+					// so available actually keeps track of how many servers
+					// have a directory, since this one had it increment by one
+					if(end == 0)
+						files[numfiles].available++;
+					// increment the number of files
 					numfiles++;
+				// so if it did exist and it's not a special extension file
+				// increment how many servers have it
+				// the for loop quit when it found it and it found it at i so
+				// i is actually which file we found which makes this easier
+				} else if(end == 0) {
+					files[i].available++;
 				}
+				// now depending on the end we got add to the struct which end we got
+				// important later
+				// we can just edit files[i] since i is where we found this file
+				// entry at
+				switch(end) {
+					case 1:
+						files[i].one = 1;
+						break;
+					case 2:
+						files[i].two = 1;
+						break;
+					case 3:
+						files[i].three = 1;
+						break;
+					case 4:
+						files[i].four = 1;
+						break;
+					default:
+						break;
+				}
+
 			}
 			// we just got a directory, not we need to put it into
 			// our list of directories
@@ -241,6 +289,36 @@ void list(struct Servers servers, char *directory) {
 			if(strcmp(buf, "N M D") != 0) {
 				write(servers.dfs2sock, ack, strlen(ack));
 				//break;
+				end = 0;
+				// ok, so here we figure out if it's a fourth of a file
+				// through our amazing extension method
+				// we also remove the extension for printing just the filename
+				if(strcmp(buf+strlen(buf)-2, ".1") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+					end = 1;
+				} else if(strcmp(buf+strlen(buf)-2, ".2") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+					end = 2;
+				} else if(strcmp(buf+strlen(buf)-2, ".3") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+					end = 3;
+				} else if(strcmp(buf+strlen(buf)-2, ".4") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+					end = 4;
+				}
+				// check to see if the file already exists
 				exists = 0;
 				for(i = 0; i < numfiles; i++) {
 					if(strcmp(files[i].name, buf) == 0) {
@@ -248,9 +326,47 @@ void list(struct Servers servers, char *directory) {
 						break;
 					}
 				}
+				// if it doesn't exist add it to our list of files
 				if(exists == 0) {
+					// intialize everything that needs to be intialized
 					strcpy(files[numfiles].name, buf);
+					files[numfiles].one = 0;
+					files[numfiles].two = 0;
+					files[numfiles].three = 0;
+					files[numfiles].four = 0;
+					files[numfiles].available = 0;
+					// so available actually keeps track of how many servers
+					// have a directory, since this one had it increment by one
+					if(end == 0)
+						files[numfiles].available++;
+					// increment the number of files
 					numfiles++;
+				// so if it did exist and it's not a special extension file
+				// increment how many servers have it
+				// the for loop quit when it found it and it found it at i so
+				// i is actually which file we found which makes this easier
+				} else if(end == 0) {
+					files[i].available++;
+				}
+				// now depending on the end we got add to the struct which end we got
+				// important later
+				// we can just edit files[i] since i is where we found this file
+				// entry at
+				switch(end) {
+					case 1:
+						files[i].one = 1;
+						break;
+					case 2:
+						files[i].two = 1;
+						break;
+					case 3:
+						files[i].three = 1;
+						break;
+					case 4:
+						files[i].four = 1;
+						break;
+					default:
+						break;
 				}
 			}
 			
@@ -272,6 +388,36 @@ void list(struct Servers servers, char *directory) {
 			if(strcmp(buf, "N M D") != 0) {
 				write(servers.dfs3sock, ack, strlen(ack));
 				//break;
+				end = 0;
+				// ok, so here we figure out if it's a fourth of a file
+				// through our amazing extension method
+				// we also remove the extension for printing just the filename
+				if(strcmp(buf+strlen(buf)-2, ".1") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+					end = 1;
+				} else if(strcmp(buf+strlen(buf)-2, ".2") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+					end = 2;
+				} else if(strcmp(buf+strlen(buf)-2, ".3") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+					end = 3;
+				} else if(strcmp(buf+strlen(buf)-2, ".4") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+					end = 4;
+				}
+				// check to see if the file already exists
 				exists = 0;
 				for(i = 0; i < numfiles; i++) {
 					if(strcmp(files[i].name, buf) == 0) {
@@ -279,9 +425,47 @@ void list(struct Servers servers, char *directory) {
 						break;
 					}
 				}
+				// if it doesn't exist add it to our list of files
 				if(exists == 0) {
+					// intialize everything that needs to be intialized
 					strcpy(files[numfiles].name, buf);
+					files[numfiles].one = 0;
+					files[numfiles].two = 0;
+					files[numfiles].three = 0;
+					files[numfiles].four = 0;
+					files[numfiles].available = 0;
+					// so available actually keeps track of how many servers
+					// have a directory, since this one had it increment by one
+					if(end == 0)
+						files[numfiles].available++;
+					// increment the number of files
 					numfiles++;
+				// so if it did exist and it's not a special extension file
+				// increment how many servers have it
+				// the for loop quit when it found it and it found it at i so
+				// i is actually which file we found which makes this easier
+				} else if(end == 0) {
+					files[i].available++;
+				}
+				// now depending on the end we got add to the struct which end we got
+				// important later
+				// we can just edit files[i] since i is where we found this file
+				// entry at
+				switch(end) {
+					case 1:
+						files[i].one = 1;
+						break;
+					case 2:
+						files[i].two = 1;
+						break;
+					case 3:
+						files[i].three = 1;
+						break;
+					case 4:
+						files[i].four = 1;
+						break;
+					default:
+						break;
 				}
 			}
 			
@@ -303,6 +487,36 @@ void list(struct Servers servers, char *directory) {
 			if(strcmp(buf, "N M D") != 0) {
 				write(servers.dfs4sock, ack, strlen(ack));
 				//break;
+				end = 0;
+				// ok, so here we figure out if it's a fourth of a file
+				// through our amazing extension method
+				// we also remove the extension for printing just the filename
+				if(strcmp(buf+strlen(buf)-2, ".1") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+					end = 1;
+				} else if(strcmp(buf+strlen(buf)-2, ".2") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+					end = 2;
+				} else if(strcmp(buf+strlen(buf)-2, ".3") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+					end = 3;
+				} else if(strcmp(buf+strlen(buf)-2, ".4") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+					end = 4;
+				}
+				// check to see if the file already exists
 				exists = 0;
 				for(i = 0; i < numfiles; i++) {
 					if(strcmp(files[i].name, buf) == 0) {
@@ -310,9 +524,47 @@ void list(struct Servers servers, char *directory) {
 						break;
 					}
 				}
+				// if it doesn't exist add it to our list of files
 				if(exists == 0) {
+					// intialize everything that needs to be intialized
 					strcpy(files[numfiles].name, buf);
+					files[numfiles].one = 0;
+					files[numfiles].two = 0;
+					files[numfiles].three = 0;
+					files[numfiles].four = 0;
+					files[numfiles].available = 0;
+					// so available actually keeps track of how many servers
+					// have a directory, since this one had it increment by one
+					if(end == 0)
+						files[numfiles].available++;
+					// increment the number of files
 					numfiles++;
+				// so if it did exist and it's not a special extension file
+				// increment how many servers have it
+				// the for loop quit when it found it and it found it at i so
+				// i is actually which file we found which makes this easier
+				} else if(end == 0) {
+					files[i].available++;
+				}
+				// now depending on the end we got add to the struct which end we got
+				// important later
+				// we can just edit files[i] since i is where we found this file
+				// entry at
+				switch(end) {
+					case 1:
+						files[i].one = 1;
+						break;
+					case 2:
+						files[i].two = 1;
+						break;
+					case 3:
+						files[i].three = 1;
+						break;
+					case 4:
+						files[i].four = 1;
+						break;
+					default:
+						break;
 				}
 			}
 			
@@ -329,7 +581,11 @@ void list(struct Servers servers, char *directory) {
 	// print out all the file names
 	//printf("%ld\n", sizeof(files));
 	for(i = 0; i < numfiles; i++) {
-		printf("%d: %s\n", i, files[i].name);
+		files[i].available += files[i].one;
+		files[i].available += files[i].two;
+		files[i].available += files[i].three;
+		files[i].available += files[i].four;
+		printf("%d: %s (%d/4)\n", i, files[i].name, files[i].available);
 	}
 	
 	
@@ -532,7 +788,7 @@ void put(struct Servers servers, char *filename) {
 	// need the / so check for that (I kept messing this up and crashing it lol)
 	// so mostly did this bc I kept messing up input
 	while(strlen(buf) != 1 && buf[strlen(buf)-2] != '/') {
-		printf("%s\n", buf);
+		//printf("%s\n", buf);
 		bzero(buf, MAXBUF);
 		printf("Forgot / try again: ");
 		fgets(buf, MAXBUF, stdin);
