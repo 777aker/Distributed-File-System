@@ -35,13 +35,103 @@ struct User logspc(int con, char *buf); // a special login to get around all the
 void test(); // I got tired of doing printf("some random statement")
 void testm(char message[]); // again, printf got annoyting bc \n uhg
 void puthelper(int con, struct User user); // put needed a helper so I don't copy so much
+int file_size(char *name); // get the size of a file
 
 char root[5]; // root folder we are in
 // ie DFS1/, DFS2/, ... 
 
+// need size of file in order to copy paste put implementation for client
+// I know client put works so I might as well copy paste
+int file_size(char *name) {
+	FILE *fp = fopen(name, "rb");
+
+	long size = -1;
+	if(fp) {
+		fseek(fp, 0, SEEK_END);
+		size = ftell(fp)-1;
+		fclose(fp);
+	}
+	return size;
+}
+
+// get command for servers
+// I think I wanna do this in a simple manner where on this side
+// the server will just check if file exists, then send it if it does
+// client will handle extensions and such
 void get(int con, struct User user, char *filename) {
+	char filelocation[MAXBUF];
+	char buf[MAXBUF];
+	FILE *fp;
+	int size;
+	int bufi = 0;
+	int fourth = 0;
+	char c = 0;
+	// first, build our file location
+	// the whole root directory and user thingie
+	bzero(filelocation, MAXBUF);
+	strcpy(filelocation, root);
+	printf("called get\n");
+	// I never explained this but this is really just checking if we are logged in
+	// if strlen(username) = 0 then we aren't logged in
+	if(strlen(user.username) != 0) {
+		strcat(filelocation, "users/");
+		strcat(filelocation, user.username);
+		strcat(filelocation, "/");
+	}
+	strcat(filelocation, filename);
+	fp = fopen(filelocation, "rb");
+	// check if we opened the file and send failure if we couldn't
+	// a lot of these will actually be fails since servers only have 2
+	// of the 4 files we are asking for
+	if(fp == NULL) {
+		bzero(buf, MAXBUF);
+		strcpy(buf, "failed to open ");
+		strcat(buf, filelocation);
+		write(con, buf, strlen(buf));
+		return;
+	}
+	// eeyyy, we succeeded
+	// get read to send data
+	bzero(buf, MAXBUF);
+	strcpy(buf, "opened ");
+	strcat(buf, filelocation);
+	write(con, buf, strlen(buf));
+	read(con, buf, MAXBUF);
+	if(strcmp(buf, "ready") != 0) {
+		printf("Failed to execute get command canceling\n");
+		return;
+	}
+	// --------- hanging somewhere past here
+	// time to send our data, copied from client put command
+	// since put is just backwards get
+	// oh crap, put actually knows the size of the file to read it
+	// wait a sec, I can get the size of a file 
+	// just need to copy file_size method
+	
+	size = file_size(filelocation);
+	while(fourth <= size-1) {
+		if(bufi >= MAXBUF) {
+			write(con, buf, bufi);
+			bzero(buf, MAXBUF);
+			read(con, buf, MAXBUF);
+			bzero(buf, MAXBUF);
+			bufi = 0;
+		}
+		c = (char) fgetc(fp);
+		buf[bufi] = c;
+		bufi++;
+		fourth++;
+	}
+	write(con, buf, bufi);
+	bzero(buf, MAXBUF);
+	read(con, buf, MAXBUF);
 
+	bzero(buf, MAXBUF);
+	strcpy(buf, "EOF\r\n");
+	write(con, buf, strlen(buf));
 
+	fclose(fp);
+	printf("Finisehd get\n");
 }
 
 // the list command
