@@ -23,7 +23,7 @@ struct User {
 int open_listenfd(int port); // handle some connection stuff
 void logic(int connfd); // actual logic of the server or at least the start of it
 void *thread(void *vargp); // handle the threading stuff
-void get(int con, struct User user); // handle get command
+void get(int con, struct User user, char *filename); // handle get command
 void put(int con, struct User user); // handle put command
 void list(int con, struct User user); // handle list command
 void makedir(int con, char *buf, struct User user); // handle mkdir command
@@ -35,7 +35,12 @@ void puthelper(int con, struct User user);
 
 char root[5];
 
-void get(int con, struct User user) {
+void get(int con, struct User user, char *filename) {
+
+
+}
+
+void list(int con, struct User user) {
 
 }
 
@@ -60,6 +65,7 @@ void puthelper(int con, struct User user) {
 	char buf[MAXBUF];
 	FILE *fp;
 	char filename[MAXBUF];
+	int n;
 
 	//testm("Making file");
 	bzero(buf, MAXBUF);
@@ -93,10 +99,11 @@ void puthelper(int con, struct User user) {
 	strcpy(buf, "start");
 	while(strcmp(buf, "EOF\r\n") != 0) {
 		bzero(buf, MAXBUF);
-		read(con, buf, MAXBUF);
-		//printf("got %s\n", buf);
+		n = read(con, buf, MAXBUF);
+		//printf("got %ld\n", sizeof(buf));
 		if(strcmp(buf, "EOF\r\n") != 0) {
-			fputs(buf, fp);
+			//fputs(buf, fp);
+			fwrite(buf, 1, n, fp);
 			bzero(buf, MAXBUF);
 			strcpy(buf, "ACK");
 			//printf("sending %s\n", buf);
@@ -112,10 +119,10 @@ void puthelper(int con, struct User user) {
 	printf("%s\n", buf);
 	//printf("sending %s\n", buf);
 	write(con, buf, strlen(buf));
-
+	
 	
 	fclose(fp);
-	printf("put helper done\n");
+	//printf("put helper done\n");
 }
 
 void test() {
@@ -124,10 +131,6 @@ void test() {
 
 void testm(char message[]) {
 	printf("%s\n", message);
-
-}
-
-void list(int con, struct User user) {
 
 }
 
@@ -285,6 +288,8 @@ void logic(int connfd) {
 	struct User user;
 	bzero(user.username, strlen(user.username));
 	bzero(user.password, strlen(user.password));
+	char *tokked;
+	char delim[] = " \r\n";
 
 	bzero(buf, MAXBUF);
 	n = read(connfd, buf, MAXBUF);
@@ -299,7 +304,13 @@ void logic(int connfd) {
 		n = read(connfd, buf, MAXBUF);
 		//printf("server received:\n{%s}\n", buf);
 		if(strncmp(buf, "get", 3) == 0) {
-			get(connfd, user);
+			tokked = strtok(buf, delim);
+			tokked = strtok(NULL, delim);
+			if(tokked == NULL) {
+				printf("Invalid filename for get\n");
+			} else {
+				get(connfd, user, tokked);
+			}
 		} else if(strncmp(buf, "put", 3) == 0) {
 			//printf("Uhg %s\n", buf);
 			put(connfd, user);

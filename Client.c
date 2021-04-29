@@ -60,6 +60,13 @@ void get(struct Servers servers, char *filename) {
 	// ask each server for a specific fourth until we get one
 	// then repeat for each fourth
 	// if you none of them provide a fourth then say file incomplete
+	
+
+}
+
+void list(struct Servers servers) {
+	// get the files in servers and see if
+	// have all 4 parts
 
 }
 
@@ -106,17 +113,18 @@ void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int fi
 	
 	//printf("writing files\n");
 	bzero(buf, MAXBUF);
-	while(fourth <= size && filen != 4) {
-		if(bufi >= MAXBUF - 1) {
-			//printf("sending %s\n", buf);
+	while(fourth <= size) {
+		if(bufi >= MAXBUF) {
+			//printf("sending %d\n", bufi);
+			//printf("sending %s", buf);
 			if(serv1 != -1) {
-				write(serv1, buf, strlen(buf));
+				write(serv1, buf, bufi);
 				bzero(ack, MAXBUF);
 				read(serv1, ack, MAXBUF);
 				//printf("received %s\n", ack);
 			}
 			if(serv2 != -1) {
-				write(serv2, buf, strlen(buf));
+				write(serv2, buf, bufi);
 				bzero(ack, MAXBUF);
 				read(serv2, ack, MAXBUF);
 				//printf("received %s\n", ack);
@@ -128,37 +136,22 @@ void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int fi
 		buf[bufi] = c;
 		bufi++;
 		fourth++;
-	}
-	if(filen != 4) {
-		//printf("sending %s\n", buf);
-		if(serv1 != -1) {
-			write(serv1, buf, strlen(buf));
-			bzero(ack, MAXBUF);
-			read(serv1, ack, MAXBUF);
-			//printf("received %s\n", ack);
-		}
-		if(serv2 != -1) {
-			write(serv2, buf, strlen(buf));
-			bzero(ack, MAXBUF);
-			read(serv2, ack, MAXBUF);
-			//printf("received %s\n", ack);
-		}
+		//printf("size: %d, bufi: %d, fourth: %d\n", size, bufi, fourth);
 	}
 	
-	bzero(buf, MAXBUF);
-	if(filen == 4) {
-		while(fgets(buf, MAXBUF, fp)) {
-			if(serv1 != -1) {
-				write(serv1, buf, strlen(buf));
-				read(serv1, ack, MAXBUF);
-			}
-			if(serv2 != -1) {
-				write(serv2, buf, strlen(buf));
-				read(serv2, ack, MAXBUF);
-			}
-		}
+	//printf("sending %d\n", bufi);
+	if(serv1 != -1) {
+		write(serv1, buf, bufi);
+		bzero(ack, MAXBUF);
+		read(serv1, ack, MAXBUF);
+		//printf("received final %s\n", ack);
 	}
-	
+	if(serv2 != -1) {
+		write(serv2, buf, bufi);
+		bzero(ack, MAXBUF);
+		read(serv2, ack, MAXBUF);
+		//printf("received final %s\n", ack);
+	}
 
 	//printf("Finished writing\n");
 	bzero(buf, MAXBUF);
@@ -183,8 +176,6 @@ void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int fi
 		read(serv2, buf, MAXBUF);
 		printf("%s\n", buf);
 	}
-	
-
 	
 	//printf("put helper done\n");
 }
@@ -290,18 +281,21 @@ void put(struct Servers servers, char *filename) {
 			puthelper(servers.dfs1sock, servers.dfs2sock, fp, size, fullfile, 1);
 			puthelper(servers.dfs2sock, servers.dfs3sock, fp, size, fullfile, 2);
 			puthelper(servers.dfs3sock, servers.dfs4sock, fp, size, fullfile, 3);
+			size = size+1;
 			puthelper(servers.dfs4sock, servers.dfs1sock, fp, size, fullfile, 4);
 			break;
 		case 2:
 			puthelper(servers.dfs2sock, servers.dfs3sock, fp, size, fullfile, 1);
 			puthelper(servers.dfs3sock, servers.dfs4sock, fp, size, fullfile, 2);
 			puthelper(servers.dfs4sock, servers.dfs1sock, fp, size, fullfile, 3);
+			size = size+2;
 			puthelper(servers.dfs1sock, servers.dfs2sock, fp, size, fullfile, 4);
 			break;
 		case 3:
 			puthelper(servers.dfs3sock, servers.dfs4sock, fp, size, fullfile, 1);
 			puthelper(servers.dfs4sock, servers.dfs1sock, fp, size, fullfile, 2);
 			puthelper(servers.dfs1sock, servers.dfs2sock, fp, size, fullfile, 3);
+			size = size+3;
 			puthelper(servers.dfs2sock, servers.dfs3sock, fp, size, fullfile, 4);
 			break;
 		default:
@@ -309,12 +303,6 @@ void put(struct Servers servers, char *filename) {
 	}
 
 	fclose(fp);
-}
-
-void list(struct Servers servers) {
-	// get the files in servers and see if
-	// have all 4 parts
-
 }
 
 int md5sumhash(char *filename) {
