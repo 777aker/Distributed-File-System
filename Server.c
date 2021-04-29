@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <dirent.h>
 
 #define MAXBUF 8192 // max IO buffer between client and server
 #define LISTENQ 1024 // second argument to listen()
@@ -25,7 +26,7 @@ void logic(int connfd); // actual logic of the server or at least the start of i
 void *thread(void *vargp); // handle the threading stuff
 void get(int con, struct User user, char *filename); // handle get command
 void put(int con, struct User user); // handle put command
-void list(int con, struct User user); // handle list command
+void list(int con, struct User user, char *directory); // handle list command
 void makedir(int con, char *buf, struct User user); // handle mkdir command
 struct User login(int con); // handle login command
 struct User logspc(int con, char *buf);
@@ -40,8 +41,42 @@ void get(int con, struct User user, char *filename) {
 
 }
 
-void list(int con, struct User user) {
+void list(int con, struct User user, char *directory) {
+	struct dirent *de;
+	DIR *dr;
+	char dir[MAXBUF];
+	char buf[MAXBUF];
 
+	strcpy(dir, root);
+	if(strlen(user.username) != 0) {
+		strcat(dir, "users/");
+		strcat(dir, user.username);
+		strcat(dir, "/");
+	}
+	strcat(dir, directory);
+
+	dr = opendir(dir);
+	//printf("dir: %s\n", directory);
+	if(dr == NULL) {
+		bzero(buf, MAXBUF);
+		strcpy(buf, "failed to open ");
+		strcat(buf, dir);
+		write(con, buf, strlen(buf));
+		return;
+	}
+	bzero(buf, MAXBUF);
+	strcpy(buf, "opened");
+	printf("opened %s\n", dir);
+	write(con, buf, strlen(buf));
+	read(con, buf, MAXBUF);
+
+	while((de = readdir(dr)) != NULL) {
+		printf("%s\n", de->d_name);
+
+	}
+
+	closedir(dr);
+	printf("end of list\n");
 }
 
 void put(int con, struct User user) {
@@ -315,7 +350,9 @@ void logic(int connfd) {
 			//printf("Uhg %s\n", buf);
 			put(connfd, user);
 		} else if(strncmp(buf, "list", 4) == 0) {
-			list(connfd, user);
+			tokked = strtok(buf, delim);
+			tokked = strtok(NULL, delim);
+			list(connfd, user, tokked);
 		} else if(strncmp(buf, "mkdir", 5) == 0) {
 			makedir(connfd, buf, user);
 		} else if(strncmp(buf, "login", 5) == 0) {

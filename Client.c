@@ -42,7 +42,7 @@ void clientlogic(struct Servers servers); // where the client's processing and a
 long file_size(char *name); // get a file's size
 void get(struct Servers servers, char *filename); // handle client doing get command
 void put(struct Servers servers, char *filename); // handle client doing put command
-void list(struct Servers servers); // handle client doing list command
+void list(struct Servers servers, char *directory); // handle client doing list command
 int connectserver(char *ip, int port); // helper that connects to one server
 void exitcmd(struct Servers servers); // handle client doing exit command
 void makedir(struct Servers servers, char *dirname); // handle mkdir command
@@ -52,6 +52,7 @@ struct Servers reconnect(struct Servers servers); // try to reconnect to a serve
 void writeservers(struct Servers servers, char *message); // write message to all servers
 void readservers(struct Servers servers); // reads message from each server
 int md5sumhash(char *filename); // compute the md5hash of a file
+// a helper for the put command so there isn't so much repeated code
 void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int filen);
 
 void get(struct Servers servers, char *filename) {
@@ -60,14 +61,71 @@ void get(struct Servers servers, char *filename) {
 	// ask each server for a specific fourth until we get one
 	// then repeat for each fourth
 	// if you none of them provide a fourth then say file incomplete
-	
+
 
 }
 
-void list(struct Servers servers) {
+void list(struct Servers servers, char *directory) {
 	// get the files in servers and see if
 	// have all 4 parts
+	char dir[MAXBUF];
+	char buf[MAXBUF];
+	char ret[MAXBUF];
 
+	bzero(dir, MAXBUF);
+	if(directory == NULL) {
+		strcpy(dir, ".");
+		printf("No directory specified opening default.\n");
+	} else {
+		strcpy(dir, directory);
+	}
+
+	bzero(buf, MAXBUF);
+	strcpy(buf, "list ");
+	strcat(buf, dir);
+
+	bzero(ret, MAXBUF);
+	if(servers.dfs1sock != -1) {
+		printf("writing %s\n", buf);
+		write(servers.dfs1sock, buf, strlen(buf));
+		read(servers.dfs1sock, ret, MAXBUF);
+		if(strcmp(ret, "opened") != 0)
+			servers.dfs1sock = -1;
+		printf("%s\n", ret);
+	}
+	bzero(ret, MAXBUF);
+	if(servers.dfs2sock != -1) {
+		printf("writing %s\n", buf);
+		write(servers.dfs2sock, buf, strlen(buf));
+		read(servers.dfs2sock, ret, MAXBUF);
+		if(strcmp(ret, "opened") != 0)
+			servers.dfs2sock = -1;
+		printf("%s\n", ret);
+	}
+	bzero(ret, MAXBUF);
+	if(servers.dfs3sock != -1) {
+		printf("writing %s\n", buf);
+		write(servers.dfs3sock, buf, strlen(buf));
+		read(servers.dfs3sock, ret, MAXBUF);
+		if(strcmp(ret, "opened") != 0)
+			servers.dfs3sock = -1;
+		printf("%s\n", ret);
+	}
+	bzero(ret, MAXBUF);
+	if(servers.dfs4sock != -1) {
+		printf("writing %s\n", buf);
+		write(servers.dfs4sock, buf, strlen(buf));
+		read(servers.dfs4sock, ret, MAXBUF);
+		if(strcmp(ret, "opened") != 0)
+			servers.dfs4sock = -1;
+		printf("%s\n", ret);
+	}
+
+	bzero(buf, MAXBUF);
+	strcpy(buf, "continue");
+	writeservers(servers, buf);
+
+	printf("end of list\n");
 }
 
 void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int filen) {
@@ -113,7 +171,7 @@ void puthelper(int serv1, int serv2, FILE *fp, int size, char filename[], int fi
 	
 	//printf("writing files\n");
 	bzero(buf, MAXBUF);
-	while(fourth <= size) {
+	while(fourth <= size-1) {
 		if(bufi >= MAXBUF) {
 			//printf("sending %d\n", bufi);
 			//printf("sending %s", buf);
@@ -191,6 +249,7 @@ void put(struct Servers servers, char *filename) {
 	char delim[] = " \r\n";
 	char *tokked;
 	char fullfile[MAXBUF];
+	int remainder;
 
 	fp = fopen(filename, "rb");
 	if(fp == NULL) {
@@ -199,7 +258,12 @@ void put(struct Servers servers, char *filename) {
 	}
 
 	size = file_size(filename);
+	printf("size: %d\n", size);
+	remainder = size % 4;
+	printf("remainder: %d\n", remainder);
 	size = size / 4;
+	printf("newsize: %d\n", size);
+
 	//printf("%d\n", size);
 
 	hashval = md5sumhash(filename);
@@ -275,27 +339,28 @@ void put(struct Servers servers, char *filename) {
 			puthelper(servers.dfs4sock, servers.dfs1sock, fp, size, fullfile, 1);
 			puthelper(servers.dfs1sock, servers.dfs2sock, fp, size, fullfile, 2);
 			puthelper(servers.dfs2sock, servers.dfs3sock, fp, size, fullfile, 3);
+			size = size+remainder;
 			puthelper(servers.dfs3sock, servers.dfs4sock, fp, size, fullfile, 4);
 			break;
 		case 1:
 			puthelper(servers.dfs1sock, servers.dfs2sock, fp, size, fullfile, 1);
 			puthelper(servers.dfs2sock, servers.dfs3sock, fp, size, fullfile, 2);
 			puthelper(servers.dfs3sock, servers.dfs4sock, fp, size, fullfile, 3);
-			size = size+1;
+			size = size+remainder;
 			puthelper(servers.dfs4sock, servers.dfs1sock, fp, size, fullfile, 4);
 			break;
 		case 2:
 			puthelper(servers.dfs2sock, servers.dfs3sock, fp, size, fullfile, 1);
 			puthelper(servers.dfs3sock, servers.dfs4sock, fp, size, fullfile, 2);
 			puthelper(servers.dfs4sock, servers.dfs1sock, fp, size, fullfile, 3);
-			size = size+2;
+			size = size+remainder;
 			puthelper(servers.dfs1sock, servers.dfs2sock, fp, size, fullfile, 4);
 			break;
 		case 3:
 			puthelper(servers.dfs3sock, servers.dfs4sock, fp, size, fullfile, 1);
 			puthelper(servers.dfs4sock, servers.dfs1sock, fp, size, fullfile, 2);
 			puthelper(servers.dfs1sock, servers.dfs2sock, fp, size, fullfile, 3);
-			size = size+3;
+			size = size+remainder;
 			puthelper(servers.dfs2sock, servers.dfs3sock, fp, size, fullfile, 4);
 			break;
 		default:
@@ -539,6 +604,7 @@ void logout(struct Servers servers) {
 // so some things that should use this don't
 // just sends a message to each server
 void writeservers(struct Servers servers, char *message) {
+	printf("write msg: %s\n", message);
 	if(servers.dfs1sock != -1)
 		write(servers.dfs1sock, message, strlen(message));
 	if(servers.dfs2sock != -1)
@@ -649,7 +715,13 @@ void clientlogic(struct Servers servers) {
 				put(servers, tokked);
 			}
 		} else if(strncmp(buf, "list", 4) == 0) {
-			list(servers);
+			tokked = strtok(buf, spacedelim);
+			tokked = strtok(NULL, spacedelim);
+			if(tokked != NULL && strncmp(tokked, "users", 5) == 0) {
+				printf("Users is protected directory.\n");
+			} else {
+				list(servers, tokked);
+			}
 		} else if(strncmp(buf, "mkdir", 5) == 0) {
 			tokked = strtok(buf, spacedelim);
 			tokked = strtok(NULL, spacedelim);
@@ -772,7 +844,7 @@ long file_size(char *name) {
 	long size = -1;
 	if(fp) {
 		fseek(fp, 0, SEEK_END);
-		size = ftell(fp)+1;
+		size = ftell(fp)-1;
 		fclose(fp);
 	}
 	return size;
