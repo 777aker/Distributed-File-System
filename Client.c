@@ -96,6 +96,7 @@ void list(struct Servers servers, char *directory) {
 	//char *tokked;
 	int i; // for for loops
 	int exists; // for checking if a file already exists or not
+	char tmpbuf[MAXBUF];
 
 	//bzero(buf, MAXBUF);
 	//strcpy(buf, "Paul Johnson");
@@ -178,6 +179,30 @@ void list(struct Servers servers, char *directory) {
 				//printf("writing\n");
 				write(servers.dfs1sock, ack, strlen(ack));
 				//break;
+				if(strcmp(buf+strlen(buf)-2, ".1") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+				}
+				if(strcmp(buf+strlen(buf)-2, ".2") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+				}
+				if(strcmp(buf+strlen(buf)-2, ".3") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+				}
+				if(strcmp(buf+strlen(buf)-2, ".4") == 0) {
+					bzero(tmpbuf, MAXBUF);
+					strncpy(tmpbuf, buf, strlen(buf)-2);
+					bzero(buf, MAXBUF);
+					strcpy(buf, tmpbuf);
+				}
 				exists = 0;
 				for(i = 0; i < numfiles; i++) {
 					if(strcmp(files[i].name, buf) == 0) {
